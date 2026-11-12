@@ -20,6 +20,7 @@
 #include "../framerate_type.h"
 #include "../window_func.h"
 #include "sdl2_v.h"
+#include "touch_gesture.h"
 #include <SDL.h>
 #ifdef __EMSCRIPTEN__
 #	include <emscripten.h>
@@ -414,11 +415,18 @@ static uint ConvertSdlKeycodeIntoMy(SDL_Keycode kc)
 	return key;
 }
 
+static TouchGestureHandler _touch_handler;
+
 bool VideoDriver_SDL_Base::PollEvent()
 {
 	SDL_Event ev;
 
+	_touch_handler.SetScreenSize(_cur_resolution.width, _cur_resolution.height);
+	_touch_handler.Tick();
+
 	if (!SDL_PollEvent(&ev)) return false;
+
+	if (_touch_handler.HandleEvent(ev)) return true;
 
 	switch (ev.type) {
 		case SDL_MOUSEMOTION: {
@@ -577,6 +585,15 @@ static std::optional<std::string_view> InitializeSDL()
 
 #ifdef SDL_HINT_APP_NAME
 	SDL_SetHint(SDL_HINT_APP_NAME, "OpenTTD");
+#endif
+
+	/* Touch is handled by our own gesture layer, so stop SDL from also
+	 * synthesising mouse events from touch input (and vice versa). */
+#ifdef SDL_HINT_TOUCH_MOUSE_EVENTS
+	SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+#endif
+#ifdef SDL_HINT_MOUSE_TOUCH_EVENTS
+	SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
 #endif
 
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) return SDL_GetError();

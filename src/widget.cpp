@@ -127,6 +127,27 @@ void SetupWidgetDimensions()
 	WidgetDimensions::scaled.hsep_wide    = ScaleGUITrad(WidgetDimensions::unscaled.hsep_wide);
 	WidgetDimensions::scaled.hsep_indent  = ScaleGUITrad(WidgetDimensions::unscaled.hsep_indent);
 
+	if (_settings_client.gui.touch_mode) {
+		/* Finger-friendly spacing around interactive widgets. This only changes
+		 * layout metrics, never sprites or game behaviour. */
+		auto grow = [](RectPadding &p) {
+			const uint8_t extra = static_cast<uint8_t>(std::min<uint>(ScaleGUITrad(3), 12));
+			p.left = std::min<uint>(p.left + extra, 255);
+			p.top = std::min<uint>(p.top + extra, 255);
+			p.right = std::min<uint>(p.right + extra, 255);
+			p.bottom = std::min<uint>(p.bottom + extra, 255);
+		};
+		grow(WidgetDimensions::scaled.imgbtn);
+		grow(WidgetDimensions::scaled.framerect);
+		grow(WidgetDimensions::scaled.frametext);
+		grow(WidgetDimensions::scaled.closebox);
+		grow(WidgetDimensions::scaled.dropdowntext);
+		grow(WidgetDimensions::scaled.dropdownlist);
+		grow(WidgetDimensions::scaled.matrix);
+		grow(WidgetDimensions::scaled.vscrollbar);
+		grow(WidgetDimensions::scaled.hscrollbar);
+	}
+
 	_toolbar_image_size = GetToolbarMaximalImageSize();
 }
 
@@ -1369,9 +1390,45 @@ void NWidgetStacked::SetupSmallestSize(Window *w)
 		Dimension fill    = {(this->shown_plane == SZSP_HORIZONTAL), (this->shown_plane == SZSP_VERTICAL)};
 		Dimension resize  = {(this->shown_plane == SZSP_HORIZONTAL), (this->shown_plane == SZSP_VERTICAL)};
 		/* Here we're primarily interested in the value of resize */
-		if (this->index >= 0) w->UpdateWidgetSize(this->index, size, padding, fill, resize);
+	if (_settings_client.gui.touch_mode) {
+		/* Ensure interactive widgets are large enough to be hit reliably with a finger. */
+		const uint min_touch = ScaleGUITrad(40);
+		switch (this->type) {
+			case WWT_PUSHBTN:
+			case WWT_IMGBTN:
+			case WWT_IMGBTN_2:
+			case WWT_PUSHIMGBTN:
+			case WWT_TEXTBTN:
+			case WWT_TEXTBTN_2:
+			case WWT_PUSHTXTBTN:
+			case WWT_IMGTEXTBTN:
+			case WWT_PUSHIMGTEXTBTN:
+			case WWT_BOOLBTN:
+			case WWT_DROPDOWN:
+			case WWT_EDITBOX:
+			case NWID_BUTTON_DROPDOWN:
+			case NWID_PUSHBUTTON_DROPDOWN:
+				size.width = std::max<uint>(size.width, min_touch);
+				size.height = std::max<uint>(size.height, min_touch);
+				break;
 
-		this->smallest_x = size.width;
+			case WWT_CLOSEBOX:
+			case WWT_SHADEBOX:
+			case WWT_STICKYBOX:
+			case WWT_DEFSIZEBOX:
+			case WWT_RESIZEBOX:
+				size.width = std::max<uint>(size.width, ScaleGUITrad(32));
+				size.height = std::max<uint>(size.height, ScaleGUITrad(32));
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	if (this->index >= 0) w->UpdateWidgetSize(this->index, size, padding, fill, resize);
+
+	this->smallest_x = size.width;
 		this->smallest_y = size.height;
 		this->fill_x = fill.width;
 		this->fill_y = fill.height;

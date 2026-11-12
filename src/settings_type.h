@@ -231,6 +231,7 @@ struct GUISettings {
 	uint8_t smallmap_land_colour; ///< colour used for land and heightmap at the smallmap
 	uint8_t linkgraph_colours; ///< linkgraph overlay colours
 	ViewportScrollMode scroll_mode; ///< viewport scroll mode
+	bool touch_mode; ///< use finger-friendly widget sizes and touch gestures
 	bool smooth_scroll; ///< smooth scroll viewports
 	bool measure_tooltip; ///< show a permanent tooltip when dragging tools
 	uint8_t liveries; ///< options for displaying company liveries, 0=none, 1=self, 2=all
