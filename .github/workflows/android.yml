@@ -12,7 +12,7 @@ permissions:
 env:
   VCPKG_BASELINE: f3e10653cc27d62a37a3763cd84b38bca07c6075
   VCPKG_TRIPLET: arm64-android-shared
-  NDK_VERSION: 26.1.10909125
+  NDK_VERSION: 28.2.13676358
   SDL_VERSION: 2.32.10
 
 jobs:
@@ -53,7 +53,7 @@ jobs:
             vcpkg/buildtrees
             vcpkg/packages
             vcpkg/installed
-          key: vcpkg-${{ env.VCPKG_BASELINE }}-${{ env.VCPKG_TRIPLET }}-${{ hashFiles('vcpkg.json', 'android/triplets/**') }}
+          key: vcpkg-${{ env.VCPKG_BASELINE }}-${{ env.VCPKG_TRIPLET }}-${{ env.NDK_VERSION }}-${{ hashFiles('vcpkg.json', 'android/triplets/**') }}
           restore-keys: |
             vcpkg-${{ env.VCPKG_BASELINE }}-${{ env.VCPKG_TRIPLET }}-
 
