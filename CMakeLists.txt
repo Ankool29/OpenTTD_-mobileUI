@@ -46,6 +46,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS NO)
 
+if(ANDROID)
+    # The game is built as a shared library (libmain.so) for SDLActivity.
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS YES)
 
 # An empty target for the tools
@@ -134,8 +139,8 @@ else()
     find_package(CURL)
 endif()
 
-# Breakpad doesn't support emscripten.
-if(NOT EMSCRIPTEN)
+# Breakpad doesn't support emscripten or Android.
+if(NOT EMSCRIPTEN AND NOT ANDROID)
     find_package(unofficial-breakpad NO_MODULE)
 endif()
 
@@ -243,9 +248,17 @@ include_directories(${CMAKE_SOURCE_DIR}/src/3rdparty/squirrel/include)
 include(MSVCFilters)
 
 add_library(openttd_lib OBJECT ${GENERATED_SOURCE_FILES})
-add_executable(openttd WIN32)
-add_executable(openttd_test)
-set_target_properties(openttd PROPERTIES OUTPUT_NAME "${BINARY_NAME}")
+if(ANDROID)
+    # SDL's Android Java glue loads libmain.so and calls SDL_main() from it.
+    add_library(openttd SHARED)
+    set_target_properties(openttd PROPERTIES OUTPUT_NAME "main")
+else()
+    add_executable(openttd WIN32)
+endif()
+if(NOT ANDROID)
+    add_executable(openttd_test)
+    set_target_properties(openttd PROPERTIES OUTPUT_NAME "${BINARY_NAME}")
+endif()
 # All other files are added via target_sources()
 
 if(MSVC)
@@ -288,13 +301,12 @@ target_link_libraries(openttd
     openttd::basesets
 )
 
-target_link_libraries(openttd_test PRIVATE openttd_lib)
-if(ANDROID)
-    target_link_libraries(openttd_test PRIVATE log)
-endif()
+if(NOT ANDROID)
+    target_link_libraries(openttd_test PRIVATE openttd_lib)
 
-include(Catch)
-catch_discover_tests(openttd_test)
+    include(Catch)
+    catch_discover_tests(openttd_test)
+endif()
 
 if(HAIKU)
     target_link_libraries(openttd_lib "be" "network" "midi")
@@ -318,7 +330,7 @@ if(NOT WIN32 AND NOT EMSCRIPTEN)
     target_link_libraries(openttd_lib ${CMAKE_DL_LIBS})
 endif()
 
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT ANDROID)
     link_package(unofficial-breakpad TARGET unofficial::breakpad::libbreakpad_client)
 endif()
 

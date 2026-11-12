@@ -1,0 +1,69 @@
+plugins {
+    id 'com.android.application'
+}
+
+def keystoreFile = System.getenv("ANDROID_KEYSTORE_FILE")
+def hasCustomKeystore = keystoreFile != null && !keystoreFile.trim().isEmpty()
+
+android {
+    namespace 'org.ankool29.openttdmobile'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "org.ankool29.openttdmobile"
+        minSdk 21
+        targetSdk 34
+        versionCode (System.getenv("VERSION_CODE") ?: "1").toInteger()
+        versionName System.getenv("VERSION_NAME") ?: "1.0-experimental"
+    }
+
+    signingConfigs {
+        experimental {
+            if (hasCustomKeystore) {
+                storeFile file(keystoreFile)
+                storeType System.getenv("ANDROID_KEYSTORE_TYPE") ?: "PKCS12"
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS") ?: "openttdmobile"
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD") ?: System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            } else {
+                storeFile file("${rootDir}/keystore/openttd-mobile-experimental.p12")
+                storeType "PKCS12"
+                storePassword "openttd-mobile-experimental"
+                keyAlias "openttdmobile"
+                keyPassword "openttd-mobile-experimental"
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.experimental
+        }
+        debug {
+            signingConfig signingConfigs.experimental
+        }
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/jniLibs']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
