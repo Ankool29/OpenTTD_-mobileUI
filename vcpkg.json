@@ -27,11 +27,11 @@
     },
     {
       "name": "harfbuzz",
-      "platform": "linux | android"
+      "platform": "linux"
     },
     {
       "name": "icu",
-      "platform": "linux | android"
+      "platform": "linux"
     },
     {
       "name": "liblzma"
