@@ -67,10 +67,16 @@ jobs:
           ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
           echo "VCPKG_ROOT=$GITHUB_WORKSPACE/vcpkg" >> "$GITHUB_ENV"
 
+      - name: Build host tools
+        run: |
+          cmake -S . -B build-host -G Ninja -DOPTION_TOOLS_ONLY=ON
+          cmake --build build-host --target tools -j "$(nproc)"
+
       - name: Configure native build
         run: |
           cmake -S . -B build-android -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DHOST_BINARY_DIR="$GITHUB_WORKSPACE/build-host" \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
             -DVCPKG_TARGET_TRIPLET="${{ env.VCPKG_TRIPLET }}" \
