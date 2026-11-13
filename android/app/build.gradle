@@ -4,6 +4,8 @@ plugins {
 
 def keystoreFile = System.getenv("ANDROID_KEYSTORE_FILE")
 def hasCustomKeystore = keystoreFile != null && !keystoreFile.trim().isEmpty()
+def versionCodeValue = (System.getenv("VERSION_CODE") ?: "1").toInteger()
+def versionNameValue = System.getenv("VERSION_NAME") ?: "1.0-experimental"
 
 android {
     namespace 'org.ankool29.openttdmobile'
@@ -11,10 +13,10 @@ android {
 
     defaultConfig {
         applicationId "org.ankool29.openttdmobile"
-        minSdk 21
+        minSdk 28
         targetSdk 34
-        versionCode (System.getenv("VERSION_CODE") ?: "1").toInteger()
-        versionName System.getenv("VERSION_NAME") ?: "1.0-experimental"
+        versionCode versionCodeValue
+        versionName versionNameValue
     }
 
     signingConfigs {
