@@ -102,15 +102,23 @@ gradle -p android assembleRelease
 
 Le workflow a produit un APK installable signé avec la clé expérimentale :
 
-- exécution GitHub Actions : `43375584368` ;
-- artefact : `openttd-mobile-apk-12` ;
-- fichier : `openttd-mobile-arm64.apk`, 11 Mo ;
-- SHA-256 : `32c41e5ace28e16c7330cd7c8a6217ba7d02d14eca5d19267efddaf3a9f09b68`.
+- exécution GitHub Actions : `43381536634` ;
+- artefact : `openttd-mobile-apk-14` ;
+- fichier : `openttd-mobile-arm64.apk`, 16 Mo ;
+- SHA-256 : `9a630f6136f08c0bbf95eb02517177bd6c2aa135fec9ec556b9f4a45ee6ab2a9`.
 
 Les bibliothèques natives sont vérifiées : `libmain.so` exporte `SDL_main`,
-son nom de bibliothèque est `libmain.so`, et toutes ses dépendances
-(`libSDL2.so`, `libc++_shared.so`, `libfreetype.so`, `libcurl.so`, etc.)
-sont présentes dans l'APK. `minSdk` et l'API native sont alignés sur 28.
+`AndroidStartupMarkComplete` et `AndroidLogError`, son nom de bibliothèque
+est `libmain.so`, et toutes ses dépendances (`libSDL2.so`,
+`libc++_shared.so`, `libfreetype.so`, `libcurl.so`, etc.) sont présentes
+dans l'APK. Les segments `LOAD` sont alignés sur 16 Ko. L'APK contient les
+66 fichiers de langue et les fichiers de baseset nécessaires au premier
+démarrage. `minSdk` et l'API native sont alignés sur 28.
+
+Cette version n'a pas encore été exécutée sur un appareil dans
+l'environnement de compilation ; le test de lancement doit être fait sur
+téléphone. En cas d'échec, le dialogue de diagnostic ou
+`$HOME/.openttd/startup.log` doit être transmis.
 
 ## Données de jeu
 
