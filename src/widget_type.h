@@ -584,6 +584,7 @@ private:
 enum class NWidContainerFlag : uint8_t {
 	EqualSize, ///< Containers should keep all their (resizing) children equally large.
 	BigFirst, ///< Allocate space to biggest resize first.
+	TouchWrap, ///< Wrap children onto multiple rows when touch mode is enabled.
 };
 
 /** Bitset of \c NWidContainerFlag elements. */

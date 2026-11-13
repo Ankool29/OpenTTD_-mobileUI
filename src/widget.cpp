@@ -10,6 +10,7 @@
 #include "stdafx.h"
 #include "core/backup_type.hpp"
 #include "company_func.h"
+#include "gfx_func.h"
 #include "settings_gui.h"
 #include "strings_type.h"
 #include "window_gui.h"
@@ -126,6 +127,7 @@ void SetupWidgetDimensions()
 	WidgetDimensions::scaled.hsep_normal  = ScaleGUITrad(WidgetDimensions::unscaled.hsep_normal);
 	WidgetDimensions::scaled.hsep_wide    = ScaleGUITrad(WidgetDimensions::unscaled.hsep_wide);
 	WidgetDimensions::scaled.hsep_indent  = ScaleGUITrad(WidgetDimensions::unscaled.hsep_indent);
+	WidgetDimensions::scaled.min_touch_size = _settings_client.gui.touch_mode ? ScaleGUITrad(40) : 0;
 
 	if (_settings_client.gui.touch_mode) {
 		/* Finger-friendly spacing around interactive widgets. This only changes
@@ -1390,45 +1392,10 @@ void NWidgetStacked::SetupSmallestSize(Window *w)
 		Dimension fill    = {(this->shown_plane == SZSP_HORIZONTAL), (this->shown_plane == SZSP_VERTICAL)};
 		Dimension resize  = {(this->shown_plane == SZSP_HORIZONTAL), (this->shown_plane == SZSP_VERTICAL)};
 		/* Here we're primarily interested in the value of resize */
-	if (_settings_client.gui.touch_mode) {
-		/* Ensure interactive widgets are large enough to be hit reliably with a finger. */
-		const uint min_touch = ScaleGUITrad(40);
-		switch (this->type) {
-			case WWT_PUSHBTN:
-			case WWT_IMGBTN:
-			case WWT_IMGBTN_2:
-			case WWT_PUSHIMGBTN:
-			case WWT_TEXTBTN:
-			case WWT_TEXTBTN_2:
-			case WWT_PUSHTXTBTN:
-			case WWT_IMGTEXTBTN:
-			case WWT_PUSHIMGTEXTBTN:
-			case WWT_BOOLBTN:
-			case WWT_DROPDOWN:
-			case WWT_EDITBOX:
-			case NWID_BUTTON_DROPDOWN:
-			case NWID_PUSHBUTTON_DROPDOWN:
-				size.width = std::max<uint>(size.width, min_touch);
-				size.height = std::max<uint>(size.height, min_touch);
-				break;
 
-			case WWT_CLOSEBOX:
-			case WWT_SHADEBOX:
-			case WWT_STICKYBOX:
-			case WWT_DEFSIZEBOX:
-			case WWT_RESIZEBOX:
-				size.width = std::max<uint>(size.width, ScaleGUITrad(32));
-				size.height = std::max<uint>(size.height, ScaleGUITrad(32));
-				break;
+		if (this->index >= 0) w->UpdateWidgetSize(this->index, size, padding, fill, resize);
 
-			default:
-				break;
-		}
-	}
-
-	if (this->index >= 0) w->UpdateWidgetSize(this->index, size, padding, fill, resize);
-
-	this->smallest_x = size.width;
+		this->smallest_x = size.width;
 		this->smallest_y = size.height;
 		this->fill_x = fill.width;
 		this->fill_y = fill.height;
@@ -1646,6 +1613,53 @@ void NWidgetHorizontal::SetupSmallestSize(Window *w)
 		if (child_wid->smallest_x != 0 || child_wid->fill_x != 0) this->gaps++;
 	}
 	if (this->gaps > 0) this->gaps--; // Number of gaps is number of widgets less one.
+
+	if (this->flags.Test(NWidContainerFlag::TouchWrap) && _settings_client.gui.touch_mode) {
+		/* Wrap children into rows that fit the screen. The window is created at
+		 * this smallest size, so use the screen width as the available width. */
+		uint available_width = _screen.width;
+		if (available_width > this->pip_pre + this->pip_post) {
+			available_width -= this->pip_pre + this->pip_post;
+		} else {
+			available_width = 1;
+		}
+
+		uint row_width = 0;
+		uint row_height = 0;
+		uint max_row_width = 0;
+		uint total_height = 0;
+		bool row_has_child = false;
+
+		for (const auto &child_wid : this->children) {
+			const uint child_width = child_wid->smallest_x + child_wid->padding.Horizontal();
+			if (child_width == 0) continue;
+
+			if (row_has_child && row_width + this->pip_inter + child_width > available_width) {
+				max_row_width = std::max(max_row_width, row_width);
+				total_height += row_height;
+				row_width = 0;
+				row_height = 0;
+				row_has_child = false;
+			}
+			if (row_has_child) row_width += this->pip_inter;
+			row_width += child_width;
+			row_height = std::max<uint>(row_height, child_wid->smallest_y + child_wid->padding.Vertical());
+			row_has_child = true;
+		}
+		if (row_has_child) {
+			max_row_width = std::max(max_row_width, row_width);
+			total_height += row_height;
+		}
+
+		this->smallest_x = max_row_width + this->pip_pre + this->pip_post;
+		this->smallest_y = total_height;
+		this->fill_x = 0;
+		this->fill_y = 0;
+		this->resize_x = 0;
+		this->resize_y = 0;
+		return;
+	}
+
 	/* 1b. Make the container higher if needed to accommodate all children nicely. */
 	[[maybe_unused]] uint max_smallest = this->smallest_y + 3 * max_vert_fill; // Upper limit to computing smallest height.
 	uint cur_height = this->smallest_y;
@@ -1697,6 +1711,54 @@ void NWidgetHorizontal::SetupSmallestSize(Window *w)
 void NWidgetHorizontal::AssignSizePosition(SizingType sizing, int x, int y, uint given_width, uint given_height, bool rtl)
 {
 	assert(given_width >= this->smallest_x && given_height >= this->smallest_y);
+
+	if (this->flags.Test(NWidContainerFlag::TouchWrap) && _settings_client.gui.touch_mode) {
+		this->StoreSizePosition(sizing, x, y, given_width, given_height);
+
+		const uint available_width = given_width > this->pip_pre + this->pip_post ? given_width - this->pip_pre - this->pip_post : 1;
+		int ypos = y;
+		uint row_width = 0;
+		std::vector<NWidgetBase *> row;
+
+		auto flush_row = [&]() {
+			uint row_height = 0;
+			for (NWidgetBase *child : row) {
+				row_height = std::max<uint>(row_height, child->smallest_y + child->padding.Vertical());
+			}
+
+			int position = rtl ? x + given_width - this->pip_pre : x + this->pip_pre;
+			for (NWidgetBase *child : row) {
+				const uint child_width = child->smallest_x;
+				const uint child_height = row_height - child->padding.Vertical();
+				const int child_x = rtl ? position - child_width - child->padding.right : position + child->padding.left;
+				const int child_y = ypos + child->padding.top;
+
+				child->AssignSizePosition(sizing, child_x, child_y, child_width, child_height, rtl);
+				const uint padded_child_width = child_width + child->padding.Horizontal() + this->pip_inter;
+				position = rtl ? position - padded_child_width : position + padded_child_width;
+			}
+
+			ypos += row_height;
+			row_width = 0;
+			row.clear();
+		};
+
+		for (const auto &child_wid : this->children) {
+			const uint child_width = child_wid->smallest_x + child_wid->padding.Horizontal();
+			if (child_width == 0) {
+				child_wid->current_x = 0;
+				child_wid->current_y = 0;
+				continue;
+			}
+
+			if (!row.empty() && row_width + this->pip_inter + child_width > available_width) flush_row();
+			if (!row.empty()) row_width += this->pip_inter;
+			row_width += child_width;
+			row.push_back(child_wid.get());
+		}
+		if (!row.empty()) flush_row();
+		return;
+	}
 
 	/* Compute additional width given to us. */
 	uint additional_length = given_width - (this->pip_pre + this->gaps * this->pip_inter + this->pip_post);
@@ -3055,6 +3117,44 @@ void NWidgetLeaf::SetupSmallestSize(Window *w)
 		}
 		default:
 			NOT_REACHED();
+	}
+
+	if (_settings_client.gui.touch_mode) {
+		/* Ensure interactive widgets are large enough to be hit reliably with a finger. */
+		const uint min_touch = ScaleGUITrad(40);
+		switch (this->type) {
+			case WWT_PUSHBTN:
+			case WWT_IMGBTN:
+			case WWT_IMGBTN_2:
+			case WWT_PUSHIMGBTN:
+			case WWT_TEXTBTN:
+			case WWT_TEXTBTN_2:
+			case WWT_PUSHTXTBTN:
+			case WWT_IMGTEXTBTN:
+			case WWT_PUSHIMGTEXTBTN:
+			case WWT_BOOLBTN:
+			case WWT_ARROWBTN:
+			case WWT_PUSHARROWBTN:
+			case WWT_DROPDOWN:
+			case WWT_EDITBOX:
+			case NWID_BUTTON_DROPDOWN:
+			case NWID_PUSHBUTTON_DROPDOWN:
+				size.width = std::max<uint>(size.width, min_touch);
+				size.height = std::max<uint>(size.height, min_touch);
+				break;
+
+			case WWT_CLOSEBOX:
+			case WWT_SHADEBOX:
+			case WWT_STICKYBOX:
+			case WWT_DEFSIZEBOX:
+			case WWT_RESIZEBOX:
+				size.width = std::max<uint>(size.width, ScaleGUITrad(32));
+				size.height = std::max<uint>(size.height, ScaleGUITrad(32));
+				break;
+
+			default:
+				break;
+		}
 	}
 
 	if (this->index >= 0) w->UpdateWidgetSize(this->index, size, padding, fill, resize);

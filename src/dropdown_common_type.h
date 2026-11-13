@@ -23,6 +23,15 @@
 #include "table/strings.h"
 
 /**
+ * Get the minimum height for a touch-friendly drop down item.
+ * @return Minimum height in pixels, or zero when touch mode is disabled.
+ */
+static inline uint GetTouchMinHeight()
+{
+	return std::max(0, WidgetDimensions::scaled.min_touch_size);
+}
+
+/**
  * Drop down divider component.
  * @tparam TBase Base component.
  * @tparam TFs Font size -- used to determine height.
@@ -79,7 +88,7 @@ public:
 
 	uint Height() const override
 	{
-		return std::max<uint>(this->dim.height, this->TBase::Height());
+		return std::max<uint>(std::max<uint>(this->dim.height, this->TBase::Height()), GetTouchMinHeight());
 	}
 
 	uint Width() const override { return this->dim.width + this->TBase::Width(); }
@@ -137,7 +146,7 @@ public:
 		this->dsprite = GetSpriteSize(this->sprite);
 	}
 
-	uint Height() const override { return std::max(this->dbounds.height, this->TBase::Height()); }
+	uint Height() const override { return std::max<uint>(std::max<uint>(this->dbounds.height, this->TBase::Height()), GetTouchMinHeight()); }
 	uint Width() const override { return this->dbounds.width + WidgetDimensions::scaled.hsep_normal + this->TBase::Width(); }
 
 	int OnClick(const Rect &r, const Point &pt) const override
@@ -172,7 +181,7 @@ public:
 		this->dim = GetStringBoundingBox(STR_JUST_CHECKMARK, TFs);
 	}
 
-	uint Height() const override { return std::max<uint>(this->dim.height, this->TBase::Height()); }
+	uint Height() const override { return std::max<uint>(std::max<uint>(this->dim.height, this->TBase::Height()), GetTouchMinHeight()); }
 	uint Width() const override { return this->dim.width + WidgetDimensions::scaled.hsep_wide + this->TBase::Width(); }
 
 	int OnClick(const Rect &r, const Point &pt) const override
@@ -211,7 +220,7 @@ public:
 
 	uint Height() const override
 	{
-		return std::max<uint>(SETTING_BUTTON_HEIGHT + WidgetDimensions::scaled.vsep_normal, this->TBase::Height());
+		return std::max<uint>(std::max<uint>(SETTING_BUTTON_HEIGHT + WidgetDimensions::scaled.vsep_normal, this->TBase::Height()), GetTouchMinHeight());
 	}
 
 	uint Width() const override

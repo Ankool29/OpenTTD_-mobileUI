@@ -1760,6 +1760,7 @@ uint GetVehicleListHeight(VehicleType type, uint divisor)
 	uint base = ScaleGUITrad(GetVehicleHeight(type)) + 2 * GetCharacterHeight(FontSize::Small) + WidgetDimensions::scaled.matrix.Vertical();
 	/* Drawing of the 4 small orders + profit*/
 	if (type >= VehicleType::Ship) base = std::max(base, 6U * GetCharacterHeight(FontSize::Small) + WidgetDimensions::scaled.matrix.Vertical());
+	base = std::max<uint>(base, WidgetDimensions::scaled.min_touch_size);
 
 	if (divisor == 1) return base;
 

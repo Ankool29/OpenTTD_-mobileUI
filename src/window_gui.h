@@ -62,6 +62,7 @@ public:
 	int hsep_normal;          ///< Normal horizontal spacing.
 	int hsep_wide;            ///< Wide horizontal spacing.
 	int hsep_indent;          ///< Width of indentation for tree layouts.
+	int min_touch_size;       ///< Minimum size for touch targets, or zero when touch mode is disabled.
 
 	static const WidgetDimensions unscaled; ///< Unscaled widget dimensions.
 	static WidgetDimensions scaled;         ///< Widget dimensions scaled for current zoom level.
@@ -121,6 +122,7 @@ inline constexpr WidgetDimensions WidgetDimensions::unscaled = {
 	.hsep_normal   = 2,
 	.hsep_wide     = 6,
 	.hsep_indent   = 10,
+	.min_touch_size = 0,
 };
 
 /* widget.cpp */

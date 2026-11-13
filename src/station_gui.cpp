@@ -484,7 +484,7 @@ public:
 			}
 
 			case WID_STL_LIST:
-				fill.height = resize.height = std::max(GetCharacterHeight(FontSize::Normal), GetCharacterHeight(FontSize::Small) + ScaleGUITrad(3));
+				fill.height = resize.height = std::max<int>(std::max(GetCharacterHeight(FontSize::Normal), GetCharacterHeight(FontSize::Small) + ScaleGUITrad(3)), WidgetDimensions::scaled.min_touch_size);
 				size.height = padding.height + 5 * resize.height;
 
 				/* Determine appropriate width for mini station rating graph */
@@ -1376,7 +1376,7 @@ struct StationViewWindow : public Window {
 	void OnInit() override
 	{
 		this->cargo_icon_size = GetLargestCargoIconSize();
-		this->line_height = std::max<int>(GetCharacterHeight(FontSize::Normal), this->cargo_icon_size.height);
+		this->line_height = std::max<int>(std::max<int>(GetCharacterHeight(FontSize::Normal), this->cargo_icon_size.height), WidgetDimensions::scaled.min_touch_size);
 		this->expand_shrink_width = std::max(GetCharacterWidth(FontSize::Normal, '-'), GetCharacterWidth(FontSize::Normal, '+'));
 	}
 

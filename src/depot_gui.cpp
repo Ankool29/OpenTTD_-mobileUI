@@ -716,7 +716,7 @@ struct DepotWindow : Window {
 				}
 				int base_width = this->count_width + this->header_width + padding.width;
 
-				resize.height = std::max<uint>(this->cell_size.height, min_height + padding.height);
+				resize.height = std::max<uint>(std::max<uint>(this->cell_size.height, min_height + padding.height), WidgetDimensions::scaled.min_touch_size);
 				if (this->type == VehicleType::Train) {
 					resize.width = 1;
 					size.width = base_width + 2 * ScaleSpriteTrad(29); // about 2 parts

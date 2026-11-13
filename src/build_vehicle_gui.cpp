@@ -54,7 +54,7 @@
  */
 uint GetEngineListHeight(VehicleType type)
 {
-	return std::max<uint>(GetCharacterHeight(FontSize::Normal) + WidgetDimensions::scaled.matrix.Vertical(), GetVehicleImageCellSize(type, EngineImageType::Purchase).height);
+	return std::max<uint>(std::max<uint>(GetCharacterHeight(FontSize::Normal) + WidgetDimensions::scaled.matrix.Vertical(), GetVehicleImageCellSize(type, EngineImageType::Purchase).height), WidgetDimensions::scaled.min_touch_size);
 }
 
 static constexpr std::initializer_list<NWidgetPart> _nested_build_vehicle_widgets = {

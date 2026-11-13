@@ -430,7 +430,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_terraform_widgets = 
 		NWidget(WWT_CAPTION, Colours::DarkGreen), SetStringTip(STR_LANDSCAPING_TOOLBAR, STR_TOOLTIP_WINDOW_TITLE_DRAG_THIS),
 		NWidget(WWT_STICKYBOX, Colours::DarkGreen),
 	EndContainer(),
-	NWidget(NWID_HORIZONTAL),
+	NWidget(NWID_HORIZONTAL, NWidContainerFlag::TouchWrap),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_TT_LOWER_LAND), SetToolbarMinimalSize(1),
 								SetFill(0, 1), SetSpriteTip(SPR_IMG_TERRAFORM_DOWN, STR_LANDSCAPING_TOOLTIP_LOWER_A_CORNER_OF_LAND),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_TT_RAISE_LAND), SetToolbarMinimalSize(1),

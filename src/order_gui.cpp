@@ -797,7 +797,7 @@ public:
 	{
 		switch (widget) {
 			case WID_O_ORDER_LIST:
-				fill.height = resize.height = GetCharacterHeight(FontSize::Normal);
+				fill.height = resize.height = std::max(GetCharacterHeight(FontSize::Normal), WidgetDimensions::scaled.min_touch_size);
 				size.height = 6 * resize.height + padding.height;
 				break;
 

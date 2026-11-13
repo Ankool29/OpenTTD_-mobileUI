@@ -1472,6 +1472,37 @@ void Window::InitializePositionSize(int x, int y, int sm_width, int sm_height)
 }
 
 /**
+ * Check whether a window benefits from using the available screen area in touch mode.
+ * @param cls Window class to check.
+ * @return \c true if the window should be expanded on touch devices.
+ */
+static bool IsTouchExpandableWindow(WindowClass cls)
+{
+	switch (cls) {
+		case WindowClass::BuildVehicle:
+		case WindowClass::TrainList:
+		case WindowClass::RoadVehicleList:
+		case WindowClass::ShipList:
+		case WindowClass::AircraftList:
+		case WindowClass::VehicleOrders:
+		case WindowClass::VehicleDepot:
+		case WindowClass::VehicleDetails:
+		case WindowClass::ReplaceVehicle:
+		case WindowClass::VehicleTimetable:
+		case WindowClass::StationList:
+		case WindowClass::Company:
+		case WindowClass::TownDirectory:
+		case WindowClass::IndustryDirectory:
+		case WindowClass::SubsidyList:
+		case WindowClass::SignList:
+			return true;
+
+		default:
+			return false;
+	}
+}
+
+/**
  * Resize window towards the default size.
  * Prior to construction, a position for the new window (for its default size)
  * has been found with LocalGetWindowPlacement(). Initially, the window is
@@ -1484,6 +1515,16 @@ void Window::InitializePositionSize(int x, int y, int sm_width, int sm_height)
  */
 void Window::FindWindowPlacementAndResize(int def_width, int def_height, bool allow_resize)
 {
+	if (_settings_client.gui.touch_mode && allow_resize && IsTouchExpandableWindow(this->window_class)) {
+		const int margin = ScaleGUITrad(8);
+		int available_height = _screen.height - 2 * margin;
+		if (const Window *wt = FindWindowById(WindowClass::Statusbar, 0); wt != nullptr) available_height -= wt->height;
+		if (const Window *wt = FindWindowById(WindowClass::MainToolbar, 0); wt != nullptr) available_height -= wt->height;
+
+		def_width = std::max<int>(def_width, _screen.width - 2 * margin);
+		def_height = std::max<int>(def_height, available_height);
+	}
+
 	if (allow_resize) {
 		def_width  = std::max(def_width,  this->width); // Don't allow default size to be smaller than smallest size
 		def_height = std::max(def_height, this->height);
@@ -3570,8 +3611,29 @@ void RelocateAllWindows(int neww, int newh)
 
 	/* Reposition toolbar then status bar before other all windows. */
 	if (Window *wt = FindWindowById(WindowClass::MainToolbar, 0); wt != nullptr) {
-		ResizeWindow(wt, std::min<uint>(neww, _toolbar_width) - wt->width, 0, false);
+		if (_settings_client.gui.touch_mode) {
+			/* The number of rows depends on the available width, so rebuild the layout. */
+			wt->ReInit(0, 0, true);
+		} else {
+			ResizeWindow(wt, std::min<uint>(neww, _toolbar_width) - wt->width, 0, false);
+		}
 		wt->left = PositionMainToolbar(wt);
+	}
+
+	if (_settings_client.gui.touch_mode) {
+		/* Construction toolbars wrap their buttons based on the available width. */
+		for (Window *w : Window::Iterate()) {
+			switch (w->window_class) {
+				case WindowClass::BuildToolbar:
+				case WindowClass::ScenarioBuildToolbar:
+				case WindowClass::ScenarioGenerateLandscape:
+					w->ReInit(0, 0, true);
+					break;
+
+				default:
+					break;
+			}
+		}
 	}
 
 	if (Window *ws = FindWindowById(WindowClass::Statusbar, 0); ws != nullptr) {

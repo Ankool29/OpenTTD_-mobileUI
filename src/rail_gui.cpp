@@ -919,7 +919,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_build_rail_widgets =
 		NWidget(WWT_CAPTION, Colours::DarkGreen, WID_RAT_CAPTION), SetTextStyle(TextColour::White),
 		NWidget(WWT_STICKYBOX, Colours::DarkGreen),
 	EndContainer(),
-	NWidget(NWID_HORIZONTAL),
+	NWidget(NWID_HORIZONTAL, NWidContainerFlag::TouchWrap),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_RAT_BUILD_NS),
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_RAIL_NS, STR_RAIL_TOOLBAR_TOOLTIP_BUILD_RAILROAD_TRACK),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_RAT_BUILD_X),

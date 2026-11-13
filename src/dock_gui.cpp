@@ -344,7 +344,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_build_docks_toolbar_
 		NWidget(WWT_CAPTION, Colours::DarkGreen), SetStringTip(STR_WATERWAYS_TOOLBAR_CAPTION, STR_TOOLTIP_WINDOW_TITLE_DRAG_THIS),
 		NWidget(WWT_STICKYBOX, Colours::DarkGreen),
 	EndContainer(),
-	NWidget(NWID_HORIZONTAL_LTR),
+	NWidget(NWID_HORIZONTAL_LTR, NWidContainerFlag::TouchWrap),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_DT_CANAL), SetToolbarMinimalSize(1), SetFill(0, 1), SetSpriteTip(SPR_IMG_BUILD_CANAL, STR_WATERWAYS_TOOLBAR_BUILD_CANALS_TOOLTIP),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_DT_LOCK), SetToolbarMinimalSize(1), SetFill(0, 1), SetSpriteTip(SPR_IMG_BUILD_LOCK, STR_WATERWAYS_TOOLBAR_BUILD_LOCKS_TOOLTIP),
 		NWidget(WWT_PANEL, Colours::DarkGreen), SetToolbarSpacerMinimalSize(), SetFill(1, 1), EndContainer(),

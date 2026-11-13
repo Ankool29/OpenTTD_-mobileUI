@@ -9,6 +9,7 @@
 
 #include "stdafx.h"
 #include "core/geometry_func.hpp"
+#include "gfx_func.h"
 #include "gui.h"
 #include "spritecache.h"
 #include "window_gui.h"
@@ -1376,6 +1377,21 @@ static MenuClickedProc * const _menu_clicked_procs[] = {
 class NWidgetToolbarContainer : public NWidgetContainer {
 protected:
 	uint spacers = 0; ///< Number of spacer widgets in this toolbar
+	const WidgetID *touch_arrangement = nullptr; ///< Button order used for the multi-row touch layout.
+	uint touch_button_count = 0; ///< Number of buttons in the multi-row touch layout.
+	uint touch_columns = 0; ///< Number of buttons per row in the multi-row touch layout.
+	uint touch_rows = 0; ///< Number of rows in the multi-row touch layout.
+
+	/**
+	 * Get the button order for the multi-row touch layout.
+	 * @param count Output of the number of buttons.
+	 * @return Button order, or \c nullptr if this toolbar does not support a multi-row layout.
+	 */
+	virtual const WidgetID *GetTouchButtonArrangement(uint &count) const
+	{
+		count = 0;
+		return nullptr;
+	}
 
 public:
 	NWidgetToolbarContainer() : NWidgetContainer(NWID_HORIZONTAL)
@@ -1401,6 +1417,10 @@ public:
 		this->resize_x = 1; // We only resize in this direction
 		this->resize_y = 0; // We never resize in this direction
 		this->spacers = 0;
+		this->touch_arrangement = nullptr;
+		this->touch_button_count = 0;
+		this->touch_columns = 0;
+		this->touch_rows = 0;
 
 		uint nbuttons = 0;
 		/* First initialise some variables... */
@@ -1427,6 +1447,32 @@ public:
 		 * displayed there will be no spacers anyway. */
 		--nbuttons;
 
+		uint touch_count = 0;
+		const WidgetID *touch = this->GetTouchButtonArrangement(touch_count);
+		if (_settings_client.gui.touch_mode && touch != nullptr && touch_count > 0) {
+			const uint button_width = this->smallest_x;
+			const uint button_height = this->smallest_y;
+			const uint available_width = std::max<uint>(_screen.width, button_width);
+			this->touch_columns = std::min<uint>(std::max<uint>(available_width / std::max<uint>(button_width, 1), 1), touch_count);
+			this->touch_rows = CeilDiv(touch_count, this->touch_columns);
+			this->touch_button_count = touch_count;
+			this->touch_arrangement = touch;
+
+			this->smallest_x = this->touch_columns * button_width;
+			this->smallest_y = this->touch_rows * button_height;
+			this->fill_x = 0;
+			this->fill_y = 0;
+			this->resize_x = 0;
+			this->resize_y = 0;
+			_toolbar_width = this->smallest_x;
+
+			for (const auto &child_wid : this->children) {
+				child_wid->current_x = this->IsButton(child_wid->type) ? button_width : 0;
+				child_wid->current_y = button_height;
+			}
+			return;
+		}
+
 		/* Allow space for all buttons, and include spacers at quarter the width of buttons. */
 		_toolbar_width = nbuttons * this->smallest_x + this->spacers * this->smallest_x / 4;
 	}
@@ -1434,6 +1480,35 @@ public:
 	void AssignSizePosition(SizingType sizing, int x, int y, uint given_width, uint given_height, bool rtl) override
 	{
 		assert(given_width >= this->smallest_x && given_height >= this->smallest_y);
+
+		if (this->touch_rows > 0 && this->touch_arrangement != nullptr) {
+			this->StoreSizePosition(sizing, x, y, given_width, given_height);
+
+			std::map<WidgetID, uint> lookup;
+			for (auto it = std::begin(this->children); it != std::end(this->children); ++it) {
+				NWidgetBase *nwid = it->get();
+				nwid->current_x = 0;
+				nwid->current_y = 0;
+				if (nwid->type == NWID_SPACER) continue;
+				NWidgetCore *nwc = dynamic_cast<NWidgetCore *>(nwid);
+				assert(nwc != nullptr);
+				lookup[nwc->GetIndex()] = std::distance(this->children.begin(), it);
+			}
+
+			const uint column_width = given_width / this->touch_columns;
+			const uint row_height = given_height / this->touch_rows;
+			for (uint i = 0; i < this->touch_button_count; i++) {
+				auto found = lookup.find(this->touch_arrangement[i]);
+				if (found == lookup.end()) continue;
+
+				const uint row = i / this->touch_columns;
+				const uint column = i % this->touch_columns;
+				const int child_x = rtl ? x + given_width - (column + 1) * column_width : x + column * column_width;
+				const int child_y = y + row * row_height;
+				this->children[found->second]->AssignSizePosition(sizing, child_x, child_y, column_width, row_height, rtl);
+			}
+			return;
+		}
 
 		this->pos_x = x;
 		this->pos_y = y;
@@ -1520,6 +1595,45 @@ public:
 
 /** Container for the 'normal' main toolbar */
 class NWidgetMainToolbarContainer : public NWidgetToolbarContainer {
+	const WidgetID *GetTouchButtonArrangement(uint &count) const override
+	{
+		static const WidgetID arrange_all[] = {
+			WID_TN_PAUSE,
+			WID_TN_FAST_FORWARD,
+			WID_TN_SETTINGS,
+			WID_TN_SAVE,
+			WID_TN_SMALL_MAP,
+			WID_TN_TOWNS,
+			WID_TN_SUBSIDIES,
+			WID_TN_STATIONS,
+			WID_TN_FINANCES,
+			WID_TN_COMPANIES,
+			WID_TN_STORY,
+			WID_TN_GOAL,
+			WID_TN_GRAPHS,
+			WID_TN_LEAGUE,
+			WID_TN_INDUSTRIES,
+			WID_TN_TRAINS,
+			WID_TN_ROADVEHS,
+			WID_TN_SHIPS,
+			WID_TN_AIRCRAFT,
+			WID_TN_ZOOM_IN,
+			WID_TN_ZOOM_OUT,
+			WID_TN_RAILS,
+			WID_TN_ROADS,
+			WID_TN_TRAMS,
+			WID_TN_WATER,
+			WID_TN_AIR,
+			WID_TN_LANDSCAPE,
+			WID_TN_MUSIC_SOUND,
+			WID_TN_MESSAGES,
+			WID_TN_HELP,
+		};
+
+		count = lengthof(arrange_all);
+		return arrange_all;
+	}
+
 	const WidgetID *GetButtonArrangement(uint &width, uint &arrangeable_count, uint &button_count, uint &spacer_count) const override
 	{
 		static const uint SMALLEST_ARRANGEMENT = 14;
@@ -1790,44 +1904,14 @@ class NWidgetMainToolbarContainer : public NWidgetToolbarContainer {
 			WID_TN_ZOOM_OUT,
 			WID_TN_SWITCH_BAR,
 		};
-		static const WidgetID arrange_all[] = {
-			WID_TN_PAUSE,
-			WID_TN_FAST_FORWARD,
-			WID_TN_SETTINGS,
-			WID_TN_SAVE,
-			WID_TN_SMALL_MAP,
-			WID_TN_TOWNS,
-			WID_TN_SUBSIDIES,
-			WID_TN_STATIONS,
-			WID_TN_FINANCES,
-			WID_TN_COMPANIES,
-			WID_TN_STORY,
-			WID_TN_GOAL,
-			WID_TN_GRAPHS,
-			WID_TN_LEAGUE,
-			WID_TN_INDUSTRIES,
-			WID_TN_TRAINS,
-			WID_TN_ROADVEHS,
-			WID_TN_SHIPS,
-			WID_TN_AIRCRAFT,
-			WID_TN_ZOOM_IN,
-			WID_TN_ZOOM_OUT,
-			WID_TN_RAILS,
-			WID_TN_ROADS,
-			WID_TN_TRAMS,
-			WID_TN_WATER,
-			WID_TN_AIR,
-			WID_TN_LANDSCAPE,
-			WID_TN_MUSIC_SOUND,
-			WID_TN_MESSAGES,
-			WID_TN_HELP
-		};
+		uint all_count = 0;
+		const WidgetID *arrange_all = this->GetTouchButtonArrangement(all_count);
 
 		/* If at least BIGGEST_ARRANGEMENT fit, just spread all the buttons nicely */
 		uint full_buttons = std::max(CeilDiv(width, this->smallest_x), SMALLEST_ARRANGEMENT);
 		if (full_buttons > BIGGEST_ARRANGEMENT) {
 			_toolbar_mode = ToolbarMode::Normal;
-			button_count = arrangeable_count = lengthof(arrange_all);
+			button_count = arrangeable_count = all_count;
 			spacer_count = this->spacers;
 			return arrange_all;
 		}
