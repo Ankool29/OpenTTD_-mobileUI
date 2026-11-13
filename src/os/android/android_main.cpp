@@ -9,6 +9,7 @@
 
 #include "../../stdafx.h"
 #include "../../openttd.h"
+#include "../../core/format.hpp"
 #include "../../core/random_func.hpp"
 #include "../../string_func.h"
 
@@ -22,11 +23,9 @@
 #include <pthread.h>
 #include <unwind.h>
 
-#include <cstdarg>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 #include <ctime>
 #include <iterator>
 #include <signal.h>
@@ -54,13 +53,13 @@ static int _stderr_pipe_read = -1;
 /**
  * Write one complete line to logcat and to the startup log.
  */
-static void AndroidLogLine(int priority, const char *message)
+static void AndroidLogLine(int priority, const std::string &message)
 {
-	__android_log_write(priority, ANDROID_LOG_TAG, message);
+	__android_log_write(priority, ANDROID_LOG_TAG, message.c_str());
 
 	pthread_mutex_lock(&_log_mutex);
 	if (_startup_log_fd >= 0) {
-		if (write(_startup_log_fd, message, strlen(message)) < 0) {
+		if (write(_startup_log_fd, message.data(), message.size()) < 0) {
 			/* Nothing useful can be done when the log cannot be written. */
 		}
 		if (write(_startup_log_fd, "\n", 1) < 0) {
@@ -73,25 +72,9 @@ static void AndroidLogLine(int priority, const char *message)
 /**
  * Write a message to logcat and to the startup log.
  */
-static void AndroidLogV(int priority, const char *format, va_list args)
+static void AndroidLog(const std::string &message)
 {
-	char buffer[1024];
-	int length = vsnprintf(buffer, sizeof(buffer), format, args);
-	if (length <= 0) return;
-	if (length >= static_cast<int>(sizeof(buffer))) length = sizeof(buffer) - 1;
-	buffer[length] = '\0';
-	AndroidLogLine(priority, buffer);
-}
-
-/**
- * Write a message to logcat and to the startup log.
- */
-static void AndroidLog(const char *format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	AndroidLogV(ANDROID_LOG_INFO, format, args);
-	va_end(args);
+	AndroidLogLine(ANDROID_LOG_INFO, message);
 }
 
 /**
@@ -176,18 +159,15 @@ static _Unwind_Reason_Code AndroidBacktraceCallback(struct _Unwind_Context *cont
  */
 static void AndroidCrashHandler(int signal_number, siginfo_t *info, void *)
 {
-	char buffer[512];
-	int length = snprintf(buffer, sizeof(buffer), "\nFATAL SIGNAL %d, code=%d, address=%p\n",
-			signal_number, info != nullptr ? info->si_code : 0,
-			info != nullptr ? info->si_addr : nullptr);
-	if (length > 0) {
-		if (_crash_log_fd >= 0) {
-			if (write(_crash_log_fd, buffer, length) < 0) {
-				/* Nothing useful can be done when the log cannot be written. */
-			}
+	uintptr_t address = info != nullptr ? reinterpret_cast<uintptr_t>(info->si_addr) : 0;
+	std::string text = fmt::format("\nFATAL SIGNAL {}, code={}, address=0x{:x}\n",
+			signal_number, info != nullptr ? info->si_code : 0, address);
+	if (_crash_log_fd >= 0) {
+		if (write(_crash_log_fd, text.data(), text.size()) < 0) {
+			/* Nothing useful can be done when the log cannot be written. */
 		}
-		__android_log_write(ANDROID_LOG_FATAL, ANDROID_LOG_TAG, buffer);
 	}
+	__android_log_write(ANDROID_LOG_FATAL, ANDROID_LOG_TAG, text.c_str());
 
 	void *frames[64];
 	AndroidBacktraceState state{frames, frames + std::size(frames)};
@@ -196,19 +176,18 @@ static void AndroidCrashHandler(int signal_number, siginfo_t *info, void *)
 	for (void **frame = frames; frame < state.current; ++frame) {
 		Dl_info dl_info;
 		if (dladdr(*frame, &dl_info) != 0 && dl_info.dli_sname != nullptr) {
-			length = snprintf(buffer, sizeof(buffer), "  #%td %p %s+0x%tx\n",
-					frame - frames, *frame, dl_info.dli_sname,
-					reinterpret_cast<char *>(*frame) - reinterpret_cast<char *>(dl_info.dli_saddr));
+			uintptr_t offset = reinterpret_cast<uintptr_t>(*frame) - reinterpret_cast<uintptr_t>(dl_info.dli_saddr);
+			text = fmt::format("  #{} 0x{:x} {}+0x{:x}\n",
+					frame - frames, reinterpret_cast<uintptr_t>(*frame), dl_info.dli_sname, offset);
 		} else {
-			length = snprintf(buffer, sizeof(buffer), "  #%td %p\n", frame - frames, *frame);
+			text = fmt::format("  #{} 0x{:x}\n", frame - frames, reinterpret_cast<uintptr_t>(*frame));
 		}
-		if (length <= 0) continue;
 		if (_crash_log_fd >= 0) {
-			if (write(_crash_log_fd, buffer, length) < 0) {
+			if (write(_crash_log_fd, text.data(), text.size()) < 0) {
 				/* Nothing useful can be done when the log cannot be written. */
 			}
 		}
-		__android_log_write(ANDROID_LOG_FATAL, ANDROID_LOG_TAG, buffer);
+		__android_log_write(ANDROID_LOG_FATAL, ANDROID_LOG_TAG, text.c_str());
 	}
 
 	if (_crash_log_fd >= 0) {
@@ -261,9 +240,9 @@ int main(int argc, char *argv[])
 
 	SDL_version sdl_version;
 	SDL_GetVersion(&sdl_version);
-	AndroidLog("SDL_main entered: SDL %d.%d.%d, argc=%d, internal storage=%s",
+	AndroidLog(fmt::format("SDL_main entered: SDL {}.{}.{}, argc={}, internal storage={}",
 			sdl_version.major, sdl_version.minor, sdl_version.patch,
-			argc, internal_storage != nullptr ? internal_storage : "(null)");
+			argc, internal_storage != nullptr ? internal_storage : "(null)"));
 
 	AndroidInstallCrashHandler();
 
@@ -272,7 +251,7 @@ int main(int argc, char *argv[])
 		setenv("HOME", internal_storage, 1);
 		setenv("TMPDIR", internal_storage, 1);
 	}
-	AndroidLog("HOME=%s", getenv("HOME") != nullptr ? getenv("HOME") : "(unset)");
+	AndroidLog(fmt::format("HOME={}", getenv("HOME") != nullptr ? getenv("HOME") : "(unset)"));
 
 	/* Make sure our arguments contain only valid UTF-8 characters. */
 	std::vector<std::string_view> params;
@@ -286,6 +265,6 @@ int main(int argc, char *argv[])
 
 	AndroidLog("Calling openttd_main");
 	int result = openttd_main(params);
-	AndroidLog("openttd_main returned %d", result);
+	AndroidLog(fmt::format("openttd_main returned {}", result));
 	return result;
 }
