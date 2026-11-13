@@ -53,12 +53,16 @@ void TouchGestureHandler::ReleaseLeft()
 
 void TouchGestureHandler::ClickLeft()
 {
+	_cursor.delta.x = 0;
+	_cursor.delta.y = 0;
 	this->PressLeft();
 	this->ReleaseLeft();
 }
 
 void TouchGestureHandler::ClickRight()
 {
+	_cursor.delta.x = 0;
+	_cursor.delta.y = 0;
 	_right_button_down = true;
 	_right_button_clicked = true;
 	HandleMouseEvents();
@@ -68,6 +72,8 @@ void TouchGestureHandler::ClickRight()
 void TouchGestureHandler::Wheel(int steps)
 {
 	if (steps == 0) return;
+	_cursor.delta.x = 0;
+	_cursor.delta.y = 0;
 	_cursor.wheel += steps;
 	HandleMouseEvents();
 }
@@ -138,6 +144,8 @@ bool TouchGestureHandler::HandleEvent(const SDL_Event &ev)
 			this->primary_dragging = false;
 		}
 		this->primary_long_press = true;
+		_cursor.delta.x = 0;
+		_cursor.delta.y = 0;
 		this->two_finger_gesture = true;
 		this->two_finger_zoom = false;
 		this->two_finger_accumulated = 0.0f;
