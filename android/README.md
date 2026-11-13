@@ -30,6 +30,10 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
   onglets latéraux via le bouton `Dock`. Les onglets conservent l'état de la
   fenêtre, restent accessibles au toucher et défilent lorsqu'ils sont trop
   nombreux pour l'écran.
+- En mode tactile, la fenêtre des options limite la largeur des listes
+  déroulantes à l'espace disponible et donne un défilement vertical aux
+  onglets Général, Graphismes, Son et Social. L'onglet Avancé conserve son
+  défilement existant.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà
@@ -139,6 +143,11 @@ unitaires locaux passent. Le workflow Android a produit l'APK 18 :
 
 Cet APK n'a pas encore été validé sur un véritable téléphone.
 
+Le code V2.4 (fenêtre des options adaptative et défilante) est compilé et
+les 95 tests unitaires locaux passent. L'APK correspondant doit encore être
+produit par le workflow Android et validé sur téléphone en portrait et en
+paysage.
+
 ## Données de jeu
 
 OpenTTD a besoin d'un baseset graphique (OpenGFX). Au premier lancement,
@@ -189,6 +198,10 @@ adb logcat -s OpenTTD SDL AndroidRuntime DEBUG libc
   enfant ouvert et les fenêtres pendant un placement actif ne peuvent pas
   être rétractées. Le défilement des onglets se fait à la molette ou au
   geste à deux doigts, sans barre de défilement dédiée.
+- La fenêtre des options n'a pas encore été validée sur un véritable
+  téléphone en portrait et en paysage. Les listes déroulantes très longues
+  sont plafonnées à la largeur de l'écran ; leur contenu reste accessible
+  dans la liste déroulante.
 - L'APK expérimental est signé avec la clé publique fournie ; ne pas
   l'utiliser pour une distribution de production.
 - Pas encore d'intégration du cycle de vie Android (pause/reprise

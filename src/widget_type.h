@@ -71,6 +71,7 @@ enum WidgetType : uint8_t {
 	NWID_SELECTION,       ///< Stacked widgets, only one visible at a time (eg in a panel with tabs).
 	NWID_LAYER,           ///< Layered widgets, all visible together.
 	NWID_VIEWPORT,        ///< Nested widget containing a viewport.
+	NWID_SCROLL,          ///< Vertically scrollable container.
 	NWID_BUTTON_DROPDOWN, ///< Button with a drop-down.
 	NWID_HSCROLLBAR,      ///< Horizontal scrollbar
 	NWID_VSCROLLBAR,      ///< Vertical scrollbar
@@ -727,8 +728,40 @@ public:
 	NWidgetCore *GetWidgetFromPos(int x, int y) override;
 	NWidgetBase *GetWidgetOfType(WidgetType tp) override;
 
+protected:
+	NWidgetBase *GetChild() { return this->child.get(); }
+	const NWidgetBase *GetChild() const { return this->child.get(); }
+
 private:
 	std::unique_ptr<NWidgetPIPContainer> child{}; ///< Child widget.
+};
+
+/**
+ * A vertically scrollable container.
+ * The child content keeps its natural height while the visible part is clipped
+ * to the widget rectangle. Use #SetScrollOffset to move the content.
+ * @ingroup NestedWidgets
+ */
+class NWidgetScroll : public NWidgetBackground {
+public:
+	NWidgetScroll(Colours colour, WidgetID index) : NWidgetBackground(WWT_PANEL, colour, index, std::make_unique<NWidgetVertical>()) {}
+
+	void SetupSmallestSize(Window *w) override;
+	void AssignSizePosition(SizingType sizing, int x, int y, uint given_width, uint given_height, bool rtl) override;
+
+	void Draw(const Window *w) override;
+	NWidgetCore *GetWidgetFromPos(int x, int y) override;
+
+	void SetScrollOffset(int offset);
+	int GetScrollOffset() const { return this->scroll_offset; }
+	int GetContentHeight() const { return this->content_height; }
+
+private:
+	int scroll_offset = 0; ///< Vertical offset of the content.
+	int content_height = 0; ///< Natural height of the content, including its padding.
+	bool rtl = false;       ///< Whether the content is laid out right-to-left.
+
+	void PositionChild(SizingType sizing);
 };
 
 /**

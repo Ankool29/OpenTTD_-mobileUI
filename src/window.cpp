@@ -4014,6 +4014,13 @@ void RelocateAllWindows(int neww, int newh)
 		ws->left = PositionStatusbar(ws);
 	}
 
+	if (_settings_client.gui.touch_mode) {
+		if (Window *w = FindWindowById(WindowClass::GameOptions, to_underlying(GameOptionsWindowNumber::GameOptions)); w != nullptr && (w->width > neww || w->height > newh)) {
+			/* Recompute the responsive layout and fit the options window after an orientation change. */
+			w->ReInit(0, 0, true);
+		}
+	}
+
 	for (Window *w : Window::Iterate()) {
 		int left, top;
 		/* XXX - this probably needs something more sane. For example specifying

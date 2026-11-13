@@ -2521,6 +2521,77 @@ NWidgetBase *NWidgetBackground::GetWidgetOfType(WidgetType tp)
 	return nwid;
 }
 
+void NWidgetScroll::SetupSmallestSize(Window *w)
+{
+	NWidgetBackground::SetupSmallestSize(w);
+
+	const NWidgetBase *child = this->GetChild();
+	if (child != nullptr) {
+		this->content_height = child->smallest_y + child->padding.Vertical();
+		this->smallest_x = child->smallest_x + child->padding.Horizontal();
+	} else {
+		this->content_height = 0;
+	}
+
+	/* The content scrolls, so the widget itself only needs a small minimum height. */
+	this->smallest_y = ScaleGUITrad(40);
+	this->fill_x = 1;
+	this->fill_y = 1;
+	this->resize_x = 1;
+	this->resize_y = 1;
+}
+
+void NWidgetScroll::PositionChild(SizingType sizing)
+{
+	NWidgetBase *child = this->GetChild();
+	if (child == nullptr) return;
+
+	const uint x_offset = this->rtl ? child->padding.right : child->padding.left;
+	const uint width = this->current_x - child->padding.Horizontal();
+	const uint height = this->content_height - child->padding.Vertical();
+
+	child->AssignSizePosition(sizing, this->pos_x + x_offset,
+			this->pos_y + child->padding.top - this->scroll_offset, width, height, this->rtl);
+}
+
+void NWidgetScroll::AssignSizePosition(SizingType sizing, int x, int y, uint given_width, uint given_height, bool rtl)
+{
+	assert(given_width >= this->smallest_x && given_height >= this->smallest_y);
+
+	this->StoreSizePosition(sizing, x, y, given_width, given_height);
+	this->rtl = rtl;
+	this->scroll_offset = Clamp(this->scroll_offset, 0, std::max(0, this->content_height - (int)given_height));
+	this->PositionChild(sizing);
+}
+
+void NWidgetScroll::SetScrollOffset(int offset)
+{
+	const int max_offset = std::max(0, this->content_height - (int)this->current_y);
+	const int new_offset = Clamp(offset, 0, max_offset);
+	if (new_offset == this->scroll_offset) return;
+
+	this->scroll_offset = new_offset;
+	this->PositionChild(SizingType::Resize);
+}
+
+void NWidgetScroll::Draw(const Window *w)
+{
+	if (this->current_x == 0 || this->current_y == 0) return;
+
+	DrawPixelInfo tmp_dpi;
+	if (!FillDrawPixelInfo(&tmp_dpi, this->pos_x, this->pos_y, this->current_x, this->current_y)) return;
+	tmp_dpi.left += this->pos_x;
+	tmp_dpi.top += this->pos_y;
+
+	AutoRestoreBackup dpi_backup(_cur_dpi, &tmp_dpi);
+	if (NWidgetBase *child = this->GetChild()) child->Draw(w);
+}
+
+NWidgetCore *NWidgetScroll::GetWidgetFromPos(int x, int y)
+{
+	return NWidgetBackground::GetWidgetFromPos(x, y);
+}
+
 NWidgetViewport::NWidgetViewport(WidgetID index) : NWidgetCore(NWID_VIEWPORT, Colours::Invalid, index, 1, 1, {}, STR_NULL)
 {
 }
@@ -3475,6 +3546,7 @@ static std::unique_ptr<NWidgetBase> MakeNWidget(const NWidgetPart &nwid)
 		case NWID_SELECTION: return std::make_unique<NWidgetStacked>(nwid.u.widget.index);
 		case NWID_MATRIX: return std::make_unique<NWidgetMatrix>(nwid.u.widget.colour, nwid.u.widget.index);
 		case NWID_VIEWPORT: return std::make_unique<NWidgetViewport>(nwid.u.widget.index);
+		case NWID_SCROLL: return std::make_unique<NWidgetScroll>(nwid.u.widget.colour, nwid.u.widget.index);
 		case NWID_LAYER: return std::make_unique<NWidgetLayer>(nwid.u.widget.index);
 
 		case NWID_HSCROLLBAR: [[fallthrough]];
@@ -3530,7 +3602,7 @@ static std::span<const NWidgetPart>::iterator MakeNWidget(std::span<const NWidge
  */
 bool IsContainerWidgetType(WidgetType tp)
 {
-	return tp == NWID_HORIZONTAL || tp == NWID_HORIZONTAL_LTR || tp == NWID_VERTICAL || tp == NWID_MATRIX
+	return tp == NWID_HORIZONTAL || tp == NWID_HORIZONTAL_LTR || tp == NWID_VERTICAL || tp == NWID_MATRIX || tp == NWID_SCROLL
 		|| tp == WWT_PANEL || tp == WWT_FRAME || tp == WWT_INSET || tp == NWID_SELECTION || tp == NWID_LAYER;
 }
 
