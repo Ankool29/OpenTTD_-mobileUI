@@ -108,6 +108,12 @@ jobs:
           cp "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" "$JNI_DIR/"
           ls -lh "$JNI_DIR"
 
+      - name: Strip native libraries
+        run: |
+          STRIP="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
+          find android/app/src/main/jniLibs -name '*.so' -exec "$STRIP" --strip-unneeded {} +
+          du -sh android/app/src/main/jniLibs
+
       - name: Build APK
         env:
           VERSION_CODE: ${{ github.run_number }}
