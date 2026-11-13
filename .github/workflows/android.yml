@@ -66,7 +66,7 @@ jobs:
             rm -rf /tmp/vcpkg-clone
           fi
           git -C vcpkg fetch --depth 1 origin "${{ env.VCPKG_BASELINE }}"
-          git -C vcpkg checkout -q "${{ env.VCPKG_BASELINE }}"
+          git -C vcpkg reset --hard -q "${{ env.VCPKG_BASELINE }}"
           ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
           echo "VCPKG_ROOT=$GITHUB_WORKSPACE/vcpkg" >> "$GITHUB_ENV"
 
