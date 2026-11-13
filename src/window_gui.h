@@ -233,10 +233,14 @@ enum class WindowFlag : uint8_t {
 	WhiteBorder,      ///< Window white border counter bit mask.
 	Highlighted,      ///< Window has a widget that has a highlight.
 	Centred,          ///< Window is centered and shall stay centered after ReInit.
+	Collapsed,        ///< Window is collapsed into a side tab.
 };
 
 /** Bitset of \c WindowFlag elements. */
 using WindowFlags = EnumBitSet<WindowFlag, uint16_t>;
+
+/** Widget ID of the generic window docking button. */
+static constexpr WidgetID WID_DOCK_WINDOW = 0x7FFF;
 
 static const int TIMEOUT_DURATION = 7; ///< The initial timeout value for WindowFlag::Timeout.
 static const int WHITE_BORDER_DURATION = 3; ///< The initial timeout value for WindowFlag::WhiteBorder.
@@ -323,6 +327,10 @@ public:
 	WidgetLookup widget_lookup{}; ///< Indexed access to the nested widget tree. Do not access directly, use #Window::GetWidget() instead.
 	NWidgetStacked *shade_select = nullptr; ///< Selection widget (#NWID_SELECTION) to use for shading the window. If \c nullptr, window cannot shade.
 	Dimension unshaded_size{}; ///< Last known unshaded size (only valid while shaded).
+
+	Rect collapsed_tab{}; ///< Screen rectangle of the tab when the window is collapsed.
+	uint32_t collapse_sequence = 0; ///< Sequence number used to keep collapsed tabs in a stable order.
+	bool collapsed_left = false; ///< Whether the tab is docked on the left side of the screen.
 
 	WidgetID mouse_capture_widget = INVALID_WIDGET; ///< ID of current mouse capture widget (e.g. dragged scrollbar). \c INVALID_WIDGET if no widget has mouse capture.
 
@@ -565,7 +573,17 @@ public:
 		return this->shade_select != nullptr && this->shade_select->shown_plane == SZSP_HORIZONTAL;
 	}
 
+	/**
+	 * Is the window collapsed into a side tab?
+	 * @return \c true iff the window is collapsed.
+	 */
+	inline bool IsCollapsed() const
+	{
+		return this->flags.Test(WindowFlag::Collapsed);
+	}
+
 	void SetShaded(bool make_shaded);
+	void SetCollapsed(bool collapsed);
 
 	void ScheduleResize();
 	void ProcessScheduledResize();

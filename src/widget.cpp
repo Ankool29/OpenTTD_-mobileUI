@@ -33,7 +33,7 @@ WidgetDimensions WidgetDimensions::scaled = {};
 static std::string GetStringForWidget(const Window *w, const NWidgetCore *nwid, bool secondary = false)
 {
 	StringID stringid = nwid->GetString();
-	if (nwid->GetIndex() < 0) {
+	if (nwid->GetIndex() < 0 || nwid->GetIndex() == WID_DOCK_WINDOW) {
 		if (stringid == STR_NULL) return {};
 
 		return GetString(stringid + (secondary ? 1 : 0));
@@ -3157,7 +3157,7 @@ void NWidgetLeaf::SetupSmallestSize(Window *w)
 		}
 	}
 
-	if (this->index >= 0) w->UpdateWidgetSize(this->index, size, padding, fill, resize);
+	if (this->index >= 0 && this->index != WID_DOCK_WINDOW) w->UpdateWidgetSize(this->index, size, padding, fill, resize);
 
 	this->smallest_x = size.width;
 	this->smallest_y = size.height;
@@ -3601,10 +3601,11 @@ std::unique_ptr<NWidgetBase> MakeNWidgets(std::span<const NWidgetPart> nwid_part
  * container with a caption widget) and has a shade box widget.
  * @param nwid_parts Span of nested widget parts.
  * @param[out] shade_select Pointer to the inserted shade selection widget (\c nullptr if not inserted).
+ * @param collapsible Whether to add a docking button to the title bar.
  * @return Root of the nested widget tree, a vertical container containing the entire GUI.
  * @ingroup NestedWidgetParts
  */
-std::unique_ptr<NWidgetBase> MakeWindowNWidgetTree(std::span<const NWidgetPart> nwid_parts, NWidgetStacked **shade_select)
+std::unique_ptr<NWidgetBase> MakeWindowNWidgetTree(std::span<const NWidgetPart> nwid_parts, NWidgetStacked **shade_select, bool collapsible)
 {
 	auto nwid_begin = std::begin(nwid_parts);
 	auto nwid_end = std::end(nwid_parts);
@@ -3617,6 +3618,13 @@ std::unique_ptr<NWidgetBase> MakeWindowNWidgetTree(std::span<const NWidgetPart> 
 	assert(nwid != nullptr);
 
 	NWidgetHorizontal *hor_cont = dynamic_cast<NWidgetHorizontal *>(nwid.get());
+
+	if (collapsible && hor_cont != nullptr && hor_cont->GetWidgetOfType(WWT_CAPTION) != nullptr) {
+		WidgetData data{};
+		data.string = STR_DOCK_WINDOW;
+		auto dock = std::make_unique<NWidgetLeaf>(WWT_PUSHTXTBTN, Colours::Grey, WID_DOCK_WINDOW, data, STR_TOOLTIP_DOCK_WINDOW);
+		hor_cont->Add(std::move(dock));
+	}
 
 	auto root = std::make_unique<NWidgetVertical>();
 	root->Add(std::move(nwid));

@@ -289,6 +289,8 @@ STR_TOOLTIP_SHADE                                               :{BLACK}Shade wi
 STR_TOOLTIP_DEBUG                                               :{BLACK}Show NewGRF debug information
 STR_TOOLTIP_DEFSIZE                                             :{BLACK}Resize window to default size. Ctrl+Click to store current size as default. Double Ctrl+Click to reset stored default
 STR_TOOLTIP_STICKY                                              :{BLACK}Mark this window as uncloseable by the 'Close All Windows' key. Ctrl+Click to also save state as default
+STR_DOCK_WINDOW                                                 :{BLACK}Dock
+STR_TOOLTIP_DOCK_WINDOW                                         :{BLACK}Dock this window to the side of the screen
 STR_TOOLTIP_RESIZE                                              :{BLACK}Click and drag to resize this window
 STR_TOOLTIP_TOGGLE_LARGE_SMALL_WINDOW                           :{BLACK}Toggle large/small window size
 STR_TOOLTIP_VSCROLL_BAR_SCROLLS_LIST                            :{BLACK}Scroll bar - scrolls list up/down

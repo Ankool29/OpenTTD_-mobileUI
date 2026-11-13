@@ -43,6 +43,7 @@
 
 #include "widgets/osk_widget.h"
 
+#include "table/sprites.h"
 #include "table/strings.h"
 
 #include "safeguards.h"
@@ -50,6 +51,11 @@
 static Point _drag_delta; ///< delta between mouse cursor and upper left corner of dragged window
 static Window *_mouseover_last_w = nullptr; ///< Window of the last OnMouseOver event.
 static Window *_last_scroll_window = nullptr; ///< Window of the last scroll event.
+static int _collapsed_scroll[2] = {0, 0}; ///< Scroll offset of the collapsed tabs on each side.
+static uint32_t _collapse_sequence = 0; ///< Sequence counter for stable ordering of collapsed tabs.
+
+static void LayoutCollapsedWindows();
+static bool IsCollapsibleWindowClass(WindowClass wc);
 
 /** List of windows opened at the screen sorted from the front to back. */
 WindowList _z_windows;
@@ -624,8 +630,19 @@ static void StartWindowSizing(Window *w, bool to_left);
  */
 static void DispatchLeftClickEvent(Window *w, int x, int y, int click_count)
 {
+	if (w->IsCollapsed()) {
+		w->SetCollapsed(false);
+		if (!w->window_desc.flags.Test(WindowDefaultFlag::NoFocus)) SetFocusedWindow(w);
+		return;
+	}
+
 	NWidgetCore *nw = w->nested_root->GetWidgetFromPos(x, y);
 	WidgetType widget_type = (nw != nullptr) ? nw->type : WWT_EMPTY;
+
+	if (nw != nullptr && nw->GetIndex() == WID_DOCK_WINDOW) {
+		w->SetCollapsed(true);
+		return;
+	}
 
 	/* Allow dropdown close flag detection to work. */
 	if (nw != nullptr) nw->disp_flags.Reset(NWidgetDisplayFlag::DropdownClosed);
@@ -769,6 +786,8 @@ static void DispatchLeftClickEvent(Window *w, int x, int y, int click_count)
  */
 static void DispatchRightClickEvent(Window *w, int x, int y)
 {
+	if (w->IsCollapsed()) return;
+
 	NWidgetCore *wid = w->nested_root->GetWidgetFromPos(x, y);
 	if (wid == nullptr) return;
 
@@ -798,6 +817,8 @@ static void DispatchRightClickEvent(Window *w, int x, int y)
  */
 static void DispatchHoverEvent(Window *w, int x, int y)
 {
+	if (w->IsCollapsed()) return;
+
 	NWidgetCore *wid = w->nested_root->GetWidgetFromPos(x, y);
 
 	/* No widget to handle */
@@ -826,6 +847,12 @@ static void DispatchHoverEvent(Window *w, int x, int y)
  */
 static void DispatchMouseWheelEvent(Window *w, NWidgetCore *nwid, int wheel)
 {
+	if (w->IsCollapsed()) {
+		_collapsed_scroll[w->collapsed_left ? 0 : 1] += wheel * ScaleGUITrad(40);
+		LayoutCollapsedWindows();
+		return;
+	}
+
 	if (nwid == nullptr) return;
 
 	/* Using wheel on caption/shade-box shades or unshades the window. */
@@ -853,6 +880,199 @@ static void DispatchMouseWheelEvent(Window *w, NWidgetCore *nwid, int wheel)
 			w->OnScrollbarScroll(nwid->GetScrollbarIndex());
 			w->SetDirty();
 		}
+	}
+}
+
+/**
+ * Get the effective screen rectangle of a window.
+ * Collapsed windows are represented by their side tab instead of their original geometry.
+ * @param w Window to get the rectangle for.
+ * @param[out] left Left edge (inclusive).
+ * @param[out] top Top edge (inclusive).
+ * @param[out] right Right edge (exclusive).
+ * @param[out] bottom Bottom edge (exclusive).
+ */
+static void GetWindowRect(const Window *w, int &left, int &top, int &right, int &bottom)
+{
+	if (w->IsCollapsed()) {
+		left = w->collapsed_tab.left;
+		top = w->collapsed_tab.top;
+		right = w->collapsed_tab.right + 1;
+		bottom = w->collapsed_tab.bottom + 1;
+	} else {
+		left = w->left;
+		top = w->top;
+		right = w->left + w->width;
+		bottom = w->top + w->height;
+	}
+}
+
+/**
+ * Get an icon representing a vehicle type.
+ * @param type Vehicle type.
+ * @return Sprite to use in a collapsed tab.
+ */
+static SpriteID GetCollapsedVehicleIcon(VehicleType type)
+{
+	switch (type) {
+		case VehicleType::Train: return SPR_IMG_TRAINLIST;
+		case VehicleType::Road: return SPR_IMG_TRUCKLIST;
+		case VehicleType::Ship: return SPR_IMG_SHIPLIST;
+		case VehicleType::Aircraft: return SPR_IMG_AIRPLANESLIST;
+		default: return SPR_IMG_QUERY;
+	}
+}
+
+/**
+ * Get an icon representing a window in a collapsed tab.
+ * @param w Window to get the icon for.
+ * @return Sprite to use in a collapsed tab.
+ */
+static SpriteID GetCollapsedWindowIcon(const Window *w)
+{
+	switch (w->window_class) {
+		case WindowClass::VehicleOrders:
+			return SPR_SHARED_ORDERS_ICON;
+
+		case WindowClass::VehicleDetails:
+		case WindowClass::VehicleView:
+		case WindowClass::VehicleTimetable: {
+			const Vehicle *v = Vehicle::GetIfValid(w->window_number);
+			return v == nullptr ? SPR_IMG_QUERY : GetCollapsedVehicleIcon(v->type);
+		}
+
+		case WindowClass::VehicleDepot:
+			return SPR_IMG_DEPOT_RAIL;
+
+		case WindowClass::ReplaceVehicle: {
+			const VehicleType type = static_cast<VehicleType>(w->window_number);
+			return type < VehicleType::CompanyEnd ? GetCollapsedVehicleIcon(type) : SPR_IMG_QUERY;
+		}
+
+		case WindowClass::StationView:
+		case WindowClass::StationList:
+			return SPR_IMG_RAIL_STATION;
+
+		case WindowClass::TrainList:
+			return SPR_IMG_TRAINLIST;
+
+		case WindowClass::RoadVehicleList:
+			return SPR_IMG_TRUCKLIST;
+
+		case WindowClass::ShipList:
+			return SPR_IMG_SHIPLIST;
+
+		case WindowClass::AircraftList:
+			return SPR_IMG_AIRPLANESLIST;
+
+		case WindowClass::TownView:
+		case WindowClass::TownDirectory:
+			return SPR_IMG_TOWN;
+
+		case WindowClass::IndustryView:
+		case WindowClass::IndustryDirectory:
+			return SPR_IMG_INDUSTRY;
+
+		case WindowClass::WaypointView:
+			return SPR_IMG_WAYPOINT;
+
+		case WindowClass::Company:
+		case WindowClass::Finances:
+			return SPR_IMG_COMPANY_FINANCE;
+
+		case WindowClass::CompanyInfrastructure:
+			return SPR_IMG_COMPANY_GENERAL;
+
+		case WindowClass::SubsidyList:
+			return SPR_IMG_SUBSIDIES;
+
+		case WindowClass::SignList:
+			return SPR_IMG_SIGN;
+
+		case WindowClass::MessageHistory:
+			return SPR_IMG_MESSAGES;
+
+		case WindowClass::SmallMap:
+			return SPR_IMG_SMALLMAP;
+
+		default:
+			return SPR_IMG_QUERY;
+	}
+}
+
+/**
+ * Draw a collapsed window as a tab.
+ * The drawing coordinates are relative to the tab, as set up by #DrawOverlappedWindow.
+ * @param w Window to draw.
+ */
+static void DrawCollapsedWindow(const Window *w)
+{
+	const int width = w->collapsed_tab.Width();
+	const int height = w->collapsed_tab.Height();
+	if (width <= 0 || height <= 0) return;
+
+	const Rect r = {0, 0, width - 1, height - 1};
+	DrawFrameRect(r, Colours::Grey, {});
+
+	const SpriteID icon = GetCollapsedWindowIcon(w);
+	const Dimension icon_size = GetScaledSpriteSize(icon);
+	const int padding = ScaleGUITrad(4);
+	const int icon_x = r.left + padding;
+	const int icon_y = r.top + (r.Height() - icon_size.height) / 2;
+	DrawSprite(icon, PAL_NONE, icon_x, icon_y);
+
+	const NWidgetCore *caption = dynamic_cast<const NWidgetCore *>(w->nested_root->GetWidgetOfType(WWT_CAPTION));
+	if (caption != nullptr) {
+		const std::string text = w->GetWidgetString(caption->GetIndex(), caption->GetString());
+		const int text_left = icon_x + icon_size.width + ScaleGUITrad(3);
+		const int text_right = r.right - padding;
+		if (text_left < text_right && !text.empty()) {
+			const int text_y = r.top + (r.Height() - GetCharacterHeight(FontSize::Small)) / 2;
+			DrawString(text_left, text_right, text_y, text, TextColour::Black, AlignmentH::Start, false, FontSize::Small);
+		}
+	}
+
+	if (w->flags.Test(WindowFlag::WhiteBorder)) {
+		DrawFrameRect(r, Colours::White, FrameFlag::BorderOnly);
+	}
+}
+
+/**
+ * Check whether a window class is allowed to be collapsed into a side tab.
+ * @param wc Window class to check.
+ * @return \c true iff the window class can be collapsed.
+ */
+static bool IsCollapsibleWindowClass(WindowClass wc)
+{
+	switch (wc) {
+		case WindowClass::VehicleOrders:
+		case WindowClass::VehicleDetails:
+		case WindowClass::VehicleView:
+		case WindowClass::VehicleTimetable:
+		case WindowClass::VehicleDepot:
+		case WindowClass::ReplaceVehicle:
+		case WindowClass::StationView:
+		case WindowClass::StationList:
+		case WindowClass::TrainList:
+		case WindowClass::RoadVehicleList:
+		case WindowClass::ShipList:
+		case WindowClass::AircraftList:
+		case WindowClass::TownView:
+		case WindowClass::TownDirectory:
+		case WindowClass::IndustryView:
+		case WindowClass::IndustryDirectory:
+		case WindowClass::WaypointView:
+		case WindowClass::Company:
+		case WindowClass::CompanyInfrastructure:
+		case WindowClass::Finances:
+		case WindowClass::SubsidyList:
+		case WindowClass::SignList:
+		case WindowClass::MessageHistory:
+		case WindowClass::SmallMap:
+			return true;
+
+		default:
+			return false;
 	}
 }
 
@@ -895,33 +1115,35 @@ static void DrawOverlappedWindow(Window *w, int left, int top, int right, int bo
 	++it;
 	for (; !it.IsEnd(); ++it) {
 		const Window *v = *it;
+		int vl, vt, vr, vb;
+		GetWindowRect(v, vl, vt, vr, vb);
 		if (MayBeShown(v) &&
-				right > v->left &&
-				bottom > v->top &&
-				left < v->left + v->width &&
-				top < v->top + v->height) {
+				right > vl &&
+				bottom > vt &&
+				left < vr &&
+				top < vb) {
 			/* v and rectangle intersect with each other */
 			int x;
 
-			if (left < (x = v->left)) {
+			if (left < (x = vl)) {
 				DrawOverlappedWindow(w, left, top, x, bottom);
 				DrawOverlappedWindow(w, x, top, right, bottom);
 				return;
 			}
 
-			if (right > (x = v->left + v->width)) {
+			if (right > (x = vr)) {
 				DrawOverlappedWindow(w, left, top, x, bottom);
 				DrawOverlappedWindow(w, x, top, right, bottom);
 				return;
 			}
 
-			if (top < (x = v->top)) {
+			if (top < (x = vt)) {
 				DrawOverlappedWindow(w, left, top, right, x);
 				DrawOverlappedWindow(w, left, x, right, bottom);
 				return;
 			}
 
-			if (bottom > (x = v->top + v->height)) {
+			if (bottom > (x = vb)) {
 				DrawOverlappedWindow(w, left, top, right, x);
 				DrawOverlappedWindow(w, left, x, right, bottom);
 				return;
@@ -931,16 +1153,23 @@ static void DrawOverlappedWindow(Window *w, int left, int top, int right, int bo
 		}
 	}
 
+	int wl, wt, wr, wb;
+	GetWindowRect(w, wl, wt, wr, wb);
+
 	/* Setup blitter, and dispatch a repaint event to window *wz */
 	DrawPixelInfo *dp = _cur_dpi;
 	dp->width = right - left;
 	dp->height = bottom - top;
-	dp->left = left - w->left;
-	dp->top = top - w->top;
+	dp->left = left - wl;
+	dp->top = top - wt;
 	dp->pitch = _screen.pitch;
 	dp->dst_ptr = BlitterFactory::GetCurrentBlitter()->MoveTo(_screen.dst_ptr, left, top);
 	dp->zoom = ZoomLevel::Min;
-	w->OnPaint();
+	if (w->IsCollapsed()) {
+		DrawCollapsedWindow(w);
+	} else {
+		w->OnPaint();
+	}
 }
 
 /**
@@ -957,13 +1186,15 @@ void DrawOverlappedWindowForAll(int left, int top, int right, int bottom)
 	AutoRestoreBackup dpi_backup(_cur_dpi, &bk);
 
 	for (Window *w : Window::IterateFromBack()) {
+		int wl, wt, wr, wb;
+		GetWindowRect(w, wl, wt, wr, wb);
 		if (MayBeShown(w) &&
-				right > w->left &&
-				bottom > w->top &&
-				left < w->left + w->width &&
-				top < w->top + w->height) {
+				right > wl &&
+				bottom > wt &&
+				left < wr &&
+				top < wb) {
 			/* Window w intersects with the rectangle => needs repaint */
-			DrawOverlappedWindow(w, std::max(left, w->left), std::max(top, w->top), std::min(right, w->left + w->width), std::min(bottom, w->top + w->height));
+			DrawOverlappedWindow(w, std::max(left, wl), std::max(top, wt), std::min(right, wr), std::min(bottom, wb));
 		}
 	}
 }
@@ -974,7 +1205,11 @@ void DrawOverlappedWindowForAll(int left, int top, int right, int bottom)
  */
 void Window::SetDirty() const
 {
-	AddDirtyBlock(this->left, this->top, this->left + this->width, this->top + this->height);
+	if (this->IsCollapsed()) {
+		AddDirtyBlock(this->collapsed_tab.left, this->collapsed_tab.top, this->collapsed_tab.right + 1, this->collapsed_tab.bottom + 1);
+	} else {
+		AddDirtyBlock(this->left, this->top, this->left + this->width, this->top + this->height);
+	}
 }
 
 /**
@@ -1114,6 +1349,7 @@ void Window::Close([[maybe_unused]] int data)
 	/* Don't close twice. */
 	if (*this->z_position == nullptr) return;
 
+	const bool was_collapsed = this->IsCollapsed();
 	*this->z_position = nullptr;
 
 	if (_thd.window_class == this->window_class &&
@@ -1139,6 +1375,7 @@ void Window::Close([[maybe_unused]] int data)
 	this->CloseChildWindows();
 
 	this->SetDirty();
+	if (was_collapsed) LayoutCollapsedWindows();
 
 	Window::closed_windows.push_back(this);
 }
@@ -1401,6 +1638,17 @@ static uint GetWindowZPriority(WindowClass wc)
 }
 
 /**
+ * Get the z-priority for a window.
+ * Collapsed windows are tabs and stay above normal windows so they remain reachable.
+ * @param w The window to get the z-priority for.
+ * @return The window's z-priority.
+ */
+static uint GetWindowZPriority(const Window *w)
+{
+	return w->IsCollapsed() ? GetWindowZPriority(WindowClass::Console) : GetWindowZPriority(w->window_class);
+}
+
+/**
  * On clicking on a window, make it the frontmost window of all windows with an equal
  * or lower z-priority. The window is marked dirty for a repaint
  * @param w window that is put into the relative foreground
@@ -1408,9 +1656,9 @@ static uint GetWindowZPriority(WindowClass wc)
  */
 static void BringWindowToFront(Window *w, bool dirty)
 {
-	auto priority = GetWindowZPriority(w->window_class);
+	auto priority = GetWindowZPriority(w);
 	WindowList::iterator dest = _z_windows.begin();
-	while (dest != _z_windows.end() && (*dest == nullptr || GetWindowZPriority((*dest)->window_class) <= priority)) ++dest;
+	while (dest != _z_windows.end() && (*dest == nullptr || GetWindowZPriority(*dest) <= priority)) ++dest;
 
 	if (dest != w->z_position) {
 		_z_windows.splice(dest, _z_windows, w->z_position);
@@ -1846,7 +2094,11 @@ static Point LocalGetWindowPlacement(const WindowDesc &desc, int16_t sm_width, i
  */
 void Window::CreateNestedTree()
 {
-	this->nested_root = MakeWindowNWidgetTree(this->window_desc.nwid_parts, &this->shade_select);
+	const bool collapsible = _settings_client.gui.touch_mode &&
+			IsCollapsibleWindowClass(this->window_desc.cls) &&
+			!this->window_desc.flags.Test(WindowDefaultFlag::Modal) &&
+			!this->window_desc.flags.Test(WindowDefaultFlag::NoClose);
+	this->nested_root = MakeWindowNWidgetTree(this->window_desc.nwid_parts, &this->shade_select, collapsible);
 	this->nested_root->FillWidgetLookup(this->widget_lookup);
 }
 
@@ -1893,7 +2145,9 @@ Window::Window(WindowDesc &desc) : window_desc(desc), scale(_gui_scale), mouse_c
 Window *FindWindowFromPt(int x, int y)
 {
 	for (Window *w : Window::IterateFromFront()) {
-		if (MayBeShown(w) && IsInsideBS(x, w->left, w->width) && IsInsideBS(y, w->top, w->height)) {
+		int wl, wt, wr, wb;
+		GetWindowRect(w, wl, wt, wr, wb);
+		if (MayBeShown(w) && IsInsideBS(x, wl, wr - wl) && IsInsideBS(y, wt, wb - wt)) {
 			return w;
 		}
 	}
@@ -1913,6 +2167,9 @@ void InitWindowSystem()
 	_last_scroll_window = nullptr;
 	_scrolling_viewport = false;
 	_mouse_hovering = false;
+	_collapsed_scroll[0] = 0;
+	_collapsed_scroll[1] = 0;
+	_collapse_sequence = 0;
 
 	SetupWidgetDimensions();
 	NWidgetLeaf::InvalidateDimensionCache(); // Reset cached sizes of several widgets.
@@ -2043,7 +2300,7 @@ static void HandleMouseOver()
 	/* _mouseover_last_w will get reset when the window is deleted, see DeleteWindow() */
 	_mouseover_last_w = w;
 
-	if (w != nullptr) {
+	if (w != nullptr && !w->IsCollapsed()) {
 		/* send an event in client coordinates. */
 		Point pt = { _cursor.pos.x - w->left, _cursor.pos.y - w->top };
 		const NWidgetCore *widget = w->nested_root->GetWidgetFromPos(pt.x, pt.y);
@@ -2135,6 +2392,58 @@ static void EnsureVisibleCaption(Window *w, int nx, int ny)
 }
 
 /**
+ * Check whether a window can currently be collapsed into a side tab.
+ * @param w Window to check.
+ * @return \c true iff the window can be collapsed.
+ */
+static bool CanCollapseWindow(const Window *w)
+{
+	if (!_settings_client.gui.touch_mode) return false;
+	if (!IsCollapsibleWindowClass(w->window_class)) return false;
+	if (w->window_desc.flags.Test(WindowDefaultFlag::Modal) || w->window_desc.flags.Test(WindowDefaultFlag::NoClose)) return false;
+	if (w->FindChildWindow() != nullptr) return false;
+	if (_thd.place_mode != HT_NONE && _thd.GetCallbackWnd() == w) return false;
+	return true;
+}
+
+/**
+ * Collapse or restore a window.
+ * A collapsed window keeps its original geometry and widget state; only its
+ * representation on screen changes to a side tab.
+ * @param collapsed Whether to collapse the window.
+ */
+void Window::SetCollapsed(bool collapsed)
+{
+	if (collapsed == this->IsCollapsed()) return;
+
+	if (collapsed) {
+		if (!CanCollapseWindow(this)) return;
+
+		this->SetDirty();
+		this->flags.Set(WindowFlag::Collapsed);
+		this->collapse_sequence = ++_collapse_sequence;
+		this->collapsed_left = this->left + this->width / 2 < _screen.width / 2;
+
+		if (this->nested_focus != nullptr) this->UnfocusFocusedWidget();
+		if (_focused_window == this) SetFocusedWindow(FindWindowById(WindowClass::MainWindow, 0));
+
+		LayoutCollapsedWindows();
+		BringWindowToFront(this);
+		this->SetDirty();
+	} else {
+		this->SetDirty();
+		this->flags.Reset(WindowFlag::Collapsed);
+		this->collapsed_tab = {};
+
+		EnsureVisibleCaption(this, this->left, this->top);
+		LayoutCollapsedWindows();
+		BringWindowToFront(this);
+		this->SetWhiteBorder();
+		this->SetDirty();
+	}
+}
+
+/**
  * Resize the window.
  * Update all the widgets of a window based on their resize flags
  * Both the areas of the old window and the new sized window are set dirty
@@ -2200,6 +2509,68 @@ int GetMainViewBottom()
 {
 	Window *w = FindWindowById(WindowClass::Statusbar, 0);
 	return (w == nullptr) ? _screen.height : w->top;
+}
+
+/**
+ * Lay out all collapsed windows as tabs along the left and right screen edges.
+ * Tabs are stacked in the order in which they were collapsed. If they do not
+ * fit, the scroll offset is clamped so that at least one tab remains reachable.
+ */
+static void LayoutCollapsedWindows()
+{
+	const int margin = ScaleGUITrad(4);
+	int top = 0;
+	int bottom = _screen.height;
+
+	/* Keep the tabs inside the area not covered by the toolbar and status bar,
+	 * regardless of whether those bars are configured at the top or bottom. */
+	if (const Window *toolbar = FindWindowById(WindowClass::MainToolbar, 0); toolbar != nullptr) {
+		if (toolbar->top + toolbar->height <= _screen.height / 2) {
+			top = std::max(top, toolbar->top + toolbar->height);
+		} else {
+			bottom = std::min(bottom, toolbar->top);
+		}
+	}
+	if (const Window *statusbar = FindWindowById(WindowClass::Statusbar, 0); statusbar != nullptr) {
+		if (statusbar->top >= _screen.height / 2) {
+			bottom = std::min(bottom, statusbar->top);
+		} else {
+			top = std::max(top, statusbar->top + statusbar->height);
+		}
+	}
+
+	top += margin;
+	bottom -= margin;
+	const int available = std::max(0, bottom - top);
+	const int tab_width = std::min(ScaleGUITrad(64), std::max(ScaleGUITrad(40), _screen.width / 4));
+	const int tab_height = ScaleGUITrad(40);
+	const int gap = ScaleGUITrad(2);
+	const int visible_height = std::max(available, tab_height);
+
+	std::vector<Window *> tabs[2];
+	for (Window *w : Window::Iterate()) {
+		if (w->IsCollapsed()) tabs[w->collapsed_left ? 0 : 1].push_back(w);
+	}
+
+	for (int side = 0; side < 2; ++side) {
+		auto &list = tabs[side];
+		std::sort(list.begin(), list.end(), [](const Window *a, const Window *b) {
+			return a->collapse_sequence < b->collapse_sequence;
+		});
+
+		const int count = static_cast<int>(list.size());
+		const int total = count == 0 ? 0 : count * tab_height + (count - 1) * gap;
+		_collapsed_scroll[side] = Clamp(_collapsed_scroll[side], 0, std::max(0, total - visible_height));
+
+		int y = top - _collapsed_scroll[side];
+		const int x = side == 0 ? margin : _screen.width - tab_width - margin;
+		for (Window *w : list) {
+			w->SetDirty();
+			w->collapsed_tab = {x, y, x + tab_width - 1, y + tab_height - 1};
+			w->SetDirty();
+			y += tab_height + gap;
+		}
+	}
 }
 
 static bool _dragging_window; ///< A window is being dragged or resized.
@@ -2497,7 +2868,7 @@ static EventState HandleViewportScroll()
 	 * outside of the window and should not left-mouse scroll anymore. */
 	if (_last_scroll_window == nullptr) _last_scroll_window = FindWindowFromPt(_cursor.pos.x, _cursor.pos.y);
 
-	if (_last_scroll_window == nullptr || !((_settings_client.gui.scroll_mode != ViewportScrollMode::MapLMB && _right_button_down) || scrollwheel_scrolling || (_settings_client.gui.scroll_mode == ViewportScrollMode::MapLMB && _left_button_down))) {
+	if (_last_scroll_window == nullptr || _last_scroll_window->IsCollapsed() || !((_settings_client.gui.scroll_mode != ViewportScrollMode::MapLMB && _right_button_down) || scrollwheel_scrolling || (_settings_client.gui.scroll_mode == ViewportScrollMode::MapLMB && _left_button_down))) {
 		_cursor.fix_at = false;
 		_scrolling_viewport = false;
 		_last_scroll_window = nullptr;
@@ -2552,6 +2923,8 @@ static EventState HandleViewportScroll()
  */
 static bool MaybeBringWindowToFront(Window *w)
 {
+	if (w->IsCollapsed()) return true;
+
 	bool bring_to_front = false;
 
 	if (w->window_class == WindowClass::MainWindow ||
@@ -2827,7 +3200,7 @@ static void HandleAutoscroll()
 	int x = _cursor.pos.x;
 	int y = _cursor.pos.y;
 	Window *w = FindWindowFromPt(x, y);
-	if (w == nullptr || w->flags.Test(WindowFlag::DisableVpScroll)) return;
+	if (w == nullptr || w->IsCollapsed() || w->flags.Test(WindowFlag::DisableVpScroll)) return;
 	if (_settings_client.gui.auto_scrolling != ViewportAutoscrolling::EveryViewport && w->window_class != WindowClass::MainWindow) return;
 
 	Viewport *vp = IsPtInWindowViewport(w, x, y);
@@ -2953,14 +3326,14 @@ static void MouseLoop(MouseClick click, int mousewheel)
 	if (w == nullptr) return;
 
 	if (click != MouseClick::Hover && !MaybeBringWindowToFront(w)) return;
-	Viewport *vp = IsPtInWindowViewport(w, x, y);
+	Viewport *vp = w->IsCollapsed() ? nullptr : IsPtInWindowViewport(w, x, y);
 
 	/* Don't allow any action in a viewport if either in menu or when having a modal progress window */
 	if (vp != nullptr && (_game_mode == GameMode::Menu || HasModalProgress())) return;
 
 	if (mousewheel != 0) {
 		/* Send mousewheel event to window, unless we're scrolling a viewport or the map */
-		if (!scrollwheel_scrolling || (vp == nullptr && w->window_class != WindowClass::SmallMap)) {
+		if (!w->IsCollapsed() && (!scrollwheel_scrolling || (vp == nullptr && w->window_class != WindowClass::SmallMap))) {
 			if (NWidgetCore *nwid = w->nested_root->GetWidgetFromPos(x - w->left, y - w->top); nwid != nullptr) {
 				w->OnMouseWheel(mousewheel, nwid->GetIndex());
 			}
@@ -3692,6 +4065,8 @@ void RelocateAllWindows(int neww, int newh)
 
 		EnsureVisibleCaption(w, left, top);
 	}
+
+	LayoutCollapsedWindows();
 }
 
 /**

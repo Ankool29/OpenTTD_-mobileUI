@@ -25,6 +25,11 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
   La sélection sur la carte reste disponible via `Go To`. La liste réutilise
   la validation native des ordres, y compris la compatibilité de tous les
   véhicules partageant la liste d'ordres.
+- En mode tactile, les fenêtres d'information non modales (véhicules, gares,
+  villes, industries, listes, finances, etc.) peuvent être repliées en
+  onglets latéraux via le bouton `Dock`. Les onglets conservent l'état de la
+  fenêtre, restent accessibles au toucher et défilent lorsqu'ils sont trop
+  nombreux pour l'écran.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà
@@ -124,6 +129,11 @@ L'APK 17 doit encore être validé sur téléphone après l'ajout du sélecteur
 de stations. En cas d'échec, le dialogue de diagnostic ou
 `$HOME/.openttd/startup.log` doit être transmis.
 
+Le code des fenêtres rétractables (V2.3) a été compilé et les 95 tests
+unitaires locaux passent. L'APK correspondant doit encore être produit par
+le workflow Android et validé sur téléphone ; l'APK 17 reste la dernière
+version testée sur appareil.
+
 ## Données de jeu
 
 OpenTTD a besoin d'un baseset graphique (OpenGFX). Au premier lancement,
@@ -170,6 +180,10 @@ adb logcat -s OpenTTD SDL AndroidRuntime DEBUG libc
 - La liste applique la compatibilité de tous les véhicules partageant les
   ordres : une station utilisable par le véhicule courant mais pas par un
   véhicule partagé est masquée.
+- Les fenêtres modales, les dialogues critiques, les fenêtres ayant un
+  enfant ouvert et les fenêtres pendant un placement actif ne peuvent pas
+  être rétractées. Le défilement des onglets se fait à la molette ou au
+  geste à deux doigts, sans barre de défilement dédiée.
 - L'APK expérimental est signé avec la clé publique fournie ; ne pas
   l'utiliser pour une distribution de production.
 - Pas encore d'intégration du cycle de vie Android (pause/reprise

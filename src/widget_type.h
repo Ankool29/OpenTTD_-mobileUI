@@ -1527,7 +1527,7 @@ constexpr NWidgetPart NWidgetFunction(NWidgetFunctionType *func_ptr)
 
 bool IsContainerWidgetType(WidgetType tp);
 std::unique_ptr<NWidgetBase> MakeNWidgets(std::span<const NWidgetPart> nwid_parts, std::unique_ptr<NWidgetBase> &&container);
-std::unique_ptr<NWidgetBase> MakeWindowNWidgetTree(std::span<const NWidgetPart> nwid_parts, NWidgetStacked **shade_select);
+std::unique_ptr<NWidgetBase> MakeWindowNWidgetTree(std::span<const NWidgetPart> nwid_parts, NWidgetStacked **shade_select, bool collapsible = false);
 
 std::unique_ptr<NWidgetBase> MakeCompanyButtonRows(WidgetID widget_first, WidgetID widget_last, Colours button_colour, int max_length, StringID button_tooltip, bool resizable = true);
 
