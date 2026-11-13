@@ -99,10 +99,10 @@ gradle -p android assembleRelease
 
 Le workflow a produit un APK installable signé avec la clé expérimentale :
 
-- exécution GitHub Actions : `43374574782` ;
-- artefact : `openttd-mobile-apk-11` ;
+- exécution GitHub Actions : `43375584368` ;
+- artefact : `openttd-mobile-apk-12` ;
 - fichier : `openttd-mobile-arm64.apk`, 11 Mo ;
-- SHA-256 : `49fa4571644da18a1d6071a73c959771ecb12eaa99bf55046a0ac9ff6e0ee1c4`.
+- SHA-256 : `32c41e5ace28e16c7330cd7c8a6217ba7d02d14eca5d19267efddaf3a9f09b68`.
 
 Les bibliothèques natives sont vérifiées : `libmain.so` exporte `SDL_main`,
 son nom de bibliothèque est `libmain.so`, et toutes ses dépendances
