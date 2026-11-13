@@ -50,22 +50,23 @@ Les graphismes, les règles et le gameplay ne sont pas modifiés.
 Le workflow `.github/workflows/android.yml` construit l'APK arm64 sur un
 runner Linux (pas de compilation lourde sur le téléphone) :
 
-1. Android SDK 34, build-tools 34.0.0, NDK r26b ;
+1. Android SDK 34, build-tools 34.0.0, NDK r28c (`28.2.13676358`) ;
 2. vcpkg au commit épinglé dans `vcpkg.json`, triplet
    `arm64-android-shared` (dépendances partagées pour que SDL2 soit
    chargeable par Java) ;
-3. CMake avec le NDK (`ANDROID_ABI=arm64-v8a`,
+3. compilation des outils hôte (`strgen`) dans un build séparé, puis CMake avec le NDK (`ANDROID_ABI=arm64-v8a`,
    `ANDROID_PLATFORM=android-28`, `ANDROID_STL=c++_shared`) ;
 4. récupération des classes Java SDL et de l'icône depuis la source SDL
    `2.32.10` ;
-5. assemblage Gradle et signature de l'APK.
+5. suppression des symboles des bibliothèques natives (`llvm-strip`) ;
+6. assemblage Gradle et signature de l'APK.
 
 L'APK est publié comme artefact `openttd-mobile-apk-<run>` avec son
 empreinte SHA-256.
 
 ### Reproduire localement
 
-Prérequis : JDK 17, SDK Android, NDK r26b, CMake ≥ 3.17, Ninja, vcpkg.
+Prérequis : JDK 17, SDK Android, NDK r28c, CMake ≥ 3.17, Ninja, vcpkg.
 
 ```sh
 export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
@@ -94,6 +95,20 @@ et lancer :
 gradle -p android assembleRelease
 ```
 
+## État du build
+
+Le workflow a produit un APK installable signé avec la clé expérimentale :
+
+- exécution GitHub Actions : `43373361194` ;
+- artefact : `openttd-mobile-apk-9` ;
+- fichier : `openttd-mobile-arm64.apk`, 11 Mo ;
+- SHA-256 : `12d211e4ff360d02d2dd7bbd400310190417149077a37f5565c80ced43855a8b`.
+
+Les bibliothèques natives sont vérifiées : `libmain.so` exporte `SDL_main`,
+son nom de bibliothèque est `libmain.so`, et toutes ses dépendances
+(`libSDL2.so`, `libc++_shared.so`, `libfreetype.so`, `libcurl.so`, etc.)
+sont présentes dans l'APK. `minSdk` et l'API native sont alignés sur 28.
+
 ## Données de jeu
 
 OpenTTD a besoin d'un baseset graphique (OpenGFX). Au premier lancement,
@@ -104,6 +119,10 @@ le dossier privé de l'application (`$HOME/.openttd`).
 ## Limites connues de cette première version
 
 - Seule l'architecture `arm64-v8a` est produite.
+- HarfBuzz et ICU ne sont pas compilés pour Android : le rendu des
+  écritures complexes (arabe, etc.) utilise le chemin de repli d'OpenTTD.
+- L'APK n'a pas encore été exécuté sur un appareil ni un émulateur dans cet
+  environnement ; le premier lancement doit être validé manuellement.
 - L'APK expérimental est signé avec la clé publique fournie ; ne pas
   l'utiliser pour une distribution de production.
 - Pas encore d'intégration du cycle de vie Android (pause/reprise
