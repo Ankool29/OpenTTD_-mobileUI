@@ -125,14 +125,19 @@ dans l'APK. Les segments `LOAD` sont alignés sur 16 Ko. L'APK contient les
 66 fichiers de langue et les fichiers de baseset nécessaires au premier
 démarrage. `minSdk` et l'API native sont alignés sur 28.
 
-L'APK 17 doit encore être validé sur téléphone après l'ajout du sélecteur
-de stations. En cas d'échec, le dialogue de diagnostic ou
-`$HOME/.openttd/startup.log` doit être transmis.
+L'APK 17 reste la dernière version validée sur téléphone. En cas d'échec,
+le dialogue de diagnostic ou `$HOME/.openttd/startup.log` doit être
+transmis.
 
-Le code des fenêtres rétractables (V2.3) a été compilé et les 95 tests
-unitaires locaux passent. L'APK correspondant doit encore être produit par
-le workflow Android et validé sur téléphone ; l'APK 17 reste la dernière
-version testée sur appareil.
+Le code des fenêtres rétractables (V2.3) est compilé et les 95 tests
+unitaires locaux passent. Le workflow Android a produit l'APK 18 :
+
+- exécution GitHub Actions : `43486729404` ;
+- artefact : `openttd-mobile-apk-18` ;
+- fichier : `openttd-mobile-arm64.apk`, 15,8 Mo ;
+- SHA-256 : `f5a088ad598d14a654b2cfda54a209a728ae542efa94f8425ec5f23a7901cefd`.
+
+Cet APK n'a pas encore été validé sur un véritable téléphone.
 
 ## Données de jeu
 
