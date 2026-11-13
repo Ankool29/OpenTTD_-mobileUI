@@ -60,7 +60,10 @@ jobs:
       - name: Bootstrap vcpkg
         run: |
           if [ ! -d vcpkg/.git ]; then
-            git clone https://github.com/microsoft/vcpkg.git vcpkg
+            rm -rf /tmp/vcpkg-clone
+            git clone https://github.com/microsoft/vcpkg.git /tmp/vcpkg-clone
+            mv /tmp/vcpkg-clone/.git vcpkg/.git
+            rm -rf /tmp/vcpkg-clone
           fi
           git -C vcpkg fetch --depth 1 origin "${{ env.VCPKG_BASELINE }}"
           git -C vcpkg checkout -q "${{ env.VCPKG_BASELINE }}"
