@@ -95,6 +95,19 @@ jobs:
       - name: Build native library
         run: cmake --build build-android --target openttd -j "$(nproc)"
 
+      - name: Stage runtime data
+        run: |
+          cmake --build build-android --target baseset_files language_files -j "$(nproc)"
+          ASSETS=android/app/src/main/assets
+          rm -rf "$ASSETS/baseset" "$ASSETS/lang"
+          mkdir -p "$ASSETS/baseset" "$ASSETS/lang"
+          find build-android/baseset -maxdepth 1 -type f -exec cp {} "$ASSETS/baseset/" \;
+          cp build-android/lang/*.lng "$ASSETS/lang/"
+          test -n "$(ls -A "$ASSETS/baseset")"
+          test -n "$(ls -A "$ASSETS/lang")"
+          ls -lh "$ASSETS/baseset"
+          echo "Language files: $(find "$ASSETS/lang" -name '*.lng' | wc -l)"
+
       - name: Fetch SDL Java glue
         run: |
           curl -fsSL -o /tmp/SDL2.tar.gz \

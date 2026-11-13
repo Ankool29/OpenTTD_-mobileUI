@@ -58,8 +58,11 @@ runner Linux (pas de compilation lourde sur le téléphone) :
    `ANDROID_PLATFORM=android-28`, `ANDROID_STL=c++_shared`) ;
 4. récupération des classes Java SDL et de l'icône depuis la source SDL
    `2.32.10` ;
-5. suppression des symboles des bibliothèques natives (`llvm-strip`) ;
-6. assemblage Gradle et signature de l'APK.
+5. copie des fichiers de baseset (polices, métadonnées) et des langues
+   (`build-android/baseset`, `build-android/lang/*.lng`) dans les assets de
+   l'APK ;
+6. suppression des symboles des bibliothèques natives (`llvm-strip`) ;
+7. assemblage Gradle et signature de l'APK.
 
 L'APK est publié comme artefact `openttd-mobile-apk-<run>` avec son
 empreinte SHA-256.
@@ -116,13 +119,42 @@ la fenêtre de démarrage d'OpenTTD propose de télécharger les données
 officielles (connexion Internet requise). Les fichiers sont stockés dans
 le dossier privé de l'application (`$HOME/.openttd`).
 
+Les fichiers indispensables au démarrage (polices, métadonnées de baseset,
+`openttd.grf`, `opntitle.dat`, sons factices, traductions) sont désormais
+empaquetés dans l'APK et extraits une fois par version vers
+`$HOME/.openttd/{baseset,lang}`. Sans eux, OpenTTD quittait silencieusement
+avant d'afficher la moindre fenêtre.
+
+## Diagnostic d'un démarrage raté
+
+Le lancement natif écrit `startup.log` dans le stockage privé de
+l'application. Un `STARTUP_COMPLETE` y est ajouté dès que la boucle
+principale de la vidéo est atteinte. En cas de plantage natif, un
+`crash.log` contient le signal et une pile d'appels brute ; logcat reçoit
+en plus le tombstone Android habituel.
+
+Au lancement suivant, si le démarrage précédent ne contient pas
+`STARTUP_COMPLETE` ou si un crash a été enregistré, l'application affiche
+un dialogue avec le rapport et les boutons `Copy` / `Share` / `Continue`.
+
+Sans PC, le rapport peut être copié depuis ce dialogue. Avec le débogage
+sans fil et Termux :
+
+```sh
+pkg install android-tools
+adb pair <ip>:<port> <code>      # une seule fois
+adb connect <ip>:<port>
+adb logcat -s OpenTTD SDL AndroidRuntime DEBUG libc
+```
+
 ## Limites connues de cette première version
 
 - Seule l'architecture `arm64-v8a` est produite.
 - HarfBuzz et ICU ne sont pas compilés pour Android : le rendu des
   écritures complexes (arabe, etc.) utilise le chemin de repli d'OpenTTD.
-- L'APK n'a pas encore été exécuté sur un appareil ni un émulateur dans cet
-  environnement ; le premier lancement doit être validé manuellement.
+- Le premier lancement doit encore être validé sur appareil après le
+  correctif de démarrage ; l'environnement de compilation ne permet pas
+  d'exécuter Android.
 - L'APK expérimental est signé avec la clé publique fournie ; ne pas
   l'utiliser pour une distribution de production.
 - Pas encore d'intégration du cycle de vie Android (pause/reprise

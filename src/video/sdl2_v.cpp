@@ -26,6 +26,9 @@
 #	include <emscripten.h>
 #	include <emscripten/html5.h>
 #endif
+#ifdef __ANDROID__
+extern "C" void AndroidStartupMarkComplete();
+#endif
 
 #include "../safeguards.h"
 
@@ -731,6 +734,9 @@ void VideoDriver_SDL_Base::LoopOnce()
 
 void VideoDriver_SDL_Base::MainLoop()
 {
+#ifdef __ANDROID__
+	AndroidStartupMarkComplete();
+#endif
 #ifdef __EMSCRIPTEN__
 	/* Run the main loop event-driven, based on RequestAnimationFrame. */
 	emscripten_set_main_loop_arg(&this->EmscriptenLoop, this, 0, 1);
