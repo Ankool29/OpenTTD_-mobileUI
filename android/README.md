@@ -144,9 +144,16 @@ unitaires locaux passent. Le workflow Android a produit l'APK 18 :
 Cet APK n'a pas encore été validé sur un véritable téléphone.
 
 Le code V2.4 (fenêtre des options adaptative et défilante) est compilé et
-les 95 tests unitaires locaux passent. L'APK correspondant doit encore être
-produit par le workflow Android et validé sur téléphone en portrait et en
-paysage.
+les 95 tests unitaires locaux passent. Le workflow Android a produit
+l'APK 19 :
+
+- exécution GitHub Actions : `43507374981` ;
+- artefact : `openttd-mobile-apk-19` ;
+- fichier : `openttd-mobile-arm64.apk`, 15,8 Mo ;
+- SHA-256 : `c84e0ff9b393ecb3f0c30b68eb251fcb7239abee25f2e79c949d414d1a0670ef`.
+
+Cet APK n'a pas encore été validé sur un véritable téléphone en portrait
+et en paysage.
 
 ## Données de jeu
 
