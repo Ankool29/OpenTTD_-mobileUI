@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - 'mobile/**'
+    paths-ignore:
+      - '**.md'
 
 permissions:
   contents: read
