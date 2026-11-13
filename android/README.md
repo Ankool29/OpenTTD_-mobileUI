@@ -20,6 +20,11 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
     carte, défilement des listes).
 - `gui.touch_mode` agrandit les widgets interactifs et impose une taille
   minimale adaptée au doigt. Il est actif par défaut sur Android.
+- En mode tactile, la fenêtre des ordres propose un bouton
+  `Choose station` qui liste les stations compatibles triées par distance.
+  La sélection sur la carte reste disponible via `Go To`. La liste réutilise
+  la validation native des ordres, y compris la compatibilité de tous les
+  véhicules partageant la liste d'ordres.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà
@@ -102,10 +107,10 @@ gradle -p android assembleRelease
 
 Le workflow a produit un APK installable signé avec la clé expérimentale :
 
-- exécution GitHub Actions : `43381536634` ;
-- artefact : `openttd-mobile-apk-14` ;
+- exécution GitHub Actions : `43442750341` ;
+- artefact : `openttd-mobile-apk-17` ;
 - fichier : `openttd-mobile-arm64.apk`, 16 Mo ;
-- SHA-256 : `9a630f6136f08c0bbf95eb02517177bd6c2aa135fec9ec556b9f4a45ee6ab2a9`.
+- SHA-256 : `3c264746bb2b0156ef089f5bc2a918a2e4627f9da9c418e78395d31b75af895f`.
 
 Les bibliothèques natives sont vérifiées : `libmain.so` exporte `SDL_main`,
 `AndroidStartupMarkComplete` et `AndroidLogError`, son nom de bibliothèque
@@ -115,9 +120,8 @@ dans l'APK. Les segments `LOAD` sont alignés sur 16 Ko. L'APK contient les
 66 fichiers de langue et les fichiers de baseset nécessaires au premier
 démarrage. `minSdk` et l'API native sont alignés sur 28.
 
-Cette version n'a pas encore été exécutée sur un appareil dans
-l'environnement de compilation ; le test de lancement doit être fait sur
-téléphone. En cas d'échec, le dialogue de diagnostic ou
+L'APK 17 doit encore être validé sur téléphone après l'ajout du sélecteur
+de stations. En cas d'échec, le dialogue de diagnostic ou
 `$HOME/.openttd/startup.log` doit être transmis.
 
 ## Données de jeu
@@ -160,9 +164,12 @@ adb logcat -s OpenTTD SDL AndroidRuntime DEBUG libc
 - Seule l'architecture `arm64-v8a` est produite.
 - HarfBuzz et ICU ne sont pas compilés pour Android : le rendu des
   écritures complexes (arabe, etc.) utilise le chemin de repli d'OpenTTD.
-- Le premier lancement doit encore être validé sur appareil après le
-  correctif de démarrage ; l'environnement de compilation ne permet pas
-  d'exécuter Android.
+- Le sélecteur de stations ne liste que les stations ; les dépôts,
+  waypoints, bouées, le dépôt le plus proche et les ordres conditionnels
+  restent accessibles via `Go To` ou la carte.
+- La liste applique la compatibilité de tous les véhicules partageant les
+  ordres : une station utilisable par le véhicule courant mais pas par un
+  véhicule partagé est masquée.
 - L'APK expérimental est signé avec la clé publique fournie ; ne pas
   l'utiliser pour une distribution de production.
 - Pas encore d'intégration du cycle de vie Android (pause/reprise
