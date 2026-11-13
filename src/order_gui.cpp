@@ -22,6 +22,8 @@
 #include "station_base.h"
 #include "industry.h"
 #include "core/geometry_func.hpp"
+#include "core/math_func.hpp"
+#include "map_func.h"
 #include "zoom_func.h"
 #include "hotkeys.h"
 #include "aircraft.h"
@@ -589,6 +591,67 @@ private:
 		this->SetWidgetDirty(WID_O_GOTO);
 	}
 
+	struct StationCandidate {
+		StationID station;
+		uint distance;
+	};
+
+	uint GetStationDistance(const Station *st) const
+	{
+		return this->vehicle->type == VehicleType::Aircraft ? IntSqrt(DistanceSquare(this->vehicle->tile, st->xy)) : DistanceManhattan(this->vehicle->tile, st->xy);
+	}
+
+	bool CanUseStation(const Station *st) const
+	{
+		for (const Vehicle *u = this->vehicle->FirstShared(); u != nullptr; u = u->NextShared()) {
+			if (!CanVehicleUseStation(u, st)) return false;
+		}
+		return true;
+	}
+
+	DropDownList BuildStationDropDownList()
+	{
+		std::vector<StationCandidate> candidates;
+		for (const Station *st : Station::Iterate()) {
+			if (st->owner != _local_company && st->owner != OWNER_NONE) continue;
+			if (!GetOrderCmdFromTile(this->vehicle, st->xy).IsType(OT_GOTO_STATION)) continue;
+			if (!this->CanUseStation(st)) continue;
+			candidates.push_back({st->index, this->GetStationDistance(st)});
+		}
+
+		std::sort(candidates.begin(), candidates.end(), [](const StationCandidate &a, const StationCandidate &b) {
+			return a.distance != b.distance ? a.distance < b.distance : a.station.base() < b.station.base();
+		});
+
+		DropDownList list;
+		if (candidates.empty()) {
+			list.push_back(MakeDropDownListStringItem(STR_ORDERS_NO_COMPATIBLE_STATIONS, -1, true));
+			return list;
+		}
+
+		for (const StationCandidate &candidate : candidates) {
+			list.push_back(MakeDropDownListStringItem(GetString(STR_ORDERS_CHOOSE_STATION_ITEM, candidate.station, candidate.distance), candidate.station.base()));
+		}
+		return list;
+	}
+
+	void InsertOrderFromTile(TileIndex tile, bool keep_goto)
+	{
+		const Order cmd = GetOrderCmdFromTile(this->vehicle, tile);
+		if (cmd.IsType(OT_NOTHING)) return;
+
+		if (Command<Commands::InsertOrder>::Post(STR_ERROR_CAN_T_INSERT_NEW_ORDER, this->vehicle->tile, this->vehicle->index, this->OrderGetSel(), cmd)) {
+			if (!keep_goto) ResetObjectToPlace();
+		}
+	}
+
+	void OrderClick_ChooseStation(StationID station)
+	{
+		const Station *st = Station::GetIfValid(station);
+		if (st == nullptr) return;
+		this->InsertOrderFromTile(st->xy, false);
+	}
+
 	/**
 	 * Handle the click on the full load button.
 	 * @param load_type Load flag to apply. If matches existing load type, toggles to default of 'load if possible'.
@@ -792,6 +855,13 @@ public:
 			if (station_orders < 2) this->OrderClick_Goto(OPOS_GOTO);
 		}
 		this->OnInvalidateData(VIWD_MODIFY_ORDERS);
+	}
+
+	void OnInit() override
+	{
+		if (NWidgetStacked *choose = this->GetWidget<NWidgetStacked>(WID_O_SEL_CHOOSE_STATION); choose != nullptr) {
+			choose->SetDisplayedPlane(_settings_client.gui.touch_mode ? 0 : SZSP_NONE);
+		}
 	}
 
 	void UpdateWidgetSize(WidgetID widget, Dimension &size, [[maybe_unused]] const Dimension &padding, [[maybe_unused]] Dimension &fill, [[maybe_unused]] Dimension &resize) override
@@ -1334,6 +1404,10 @@ public:
 				break;
 			}
 
+			case WID_O_CHOOSE_STATION:
+				ShowDropDownList(this, this->BuildStationDropDownList(), -1, WID_O_CHOOSE_STATION);
+				break;
+
 			case WID_O_SHARED_ORDER_LIST:
 				ShowVehicleListWindow(this->vehicle);
 				break;
@@ -1388,6 +1462,10 @@ public:
 					case 3: this->OrderClick_Goto(OPOS_SHARE); break;
 					default: NOT_REACHED();
 				}
+				break;
+
+			case WID_O_CHOOSE_STATION:
+				if (index >= 0) this->OrderClick_ChooseStation(StationID(index));
 				break;
 
 			case WID_O_DEPOT_ACTION:
@@ -1465,13 +1543,8 @@ public:
 	void OnPlaceObject([[maybe_unused]] Point pt, TileIndex tile) override
 	{
 		if (this->goto_type == OPOS_GOTO) {
-			const Order cmd = GetOrderCmdFromTile(this->vehicle, tile);
-			if (cmd.IsType(OT_NOTHING)) return;
-
-			if (Command<Commands::InsertOrder>::Post(STR_ERROR_CAN_T_INSERT_NEW_ORDER, this->vehicle->tile, this->vehicle->index, this->OrderGetSel(), cmd)) {
-				/* With quick goto the Go To button stays active */
-				if (!_settings_client.gui.quick_goto) ResetObjectToPlace();
-			}
+			/* With quick goto the Go To button stays active. */
+			this->InsertOrderFromTile(tile, _settings_client.gui.quick_goto);
 		}
 	}
 
@@ -1646,6 +1719,12 @@ static constexpr std::initializer_list<NWidgetPart> _nested_orders_train_widgets
 				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_O_STOP_SHARING), SetFill(1, 0),
 						SetStringTip(STR_ORDERS_STOP_SHARING_BUTTON, STR_ORDERS_STOP_SHARING_TOOLTIP), SetResize(1, 0),
 			EndContainer(),
+			NWidget(NWID_SELECTION, Colours::Invalid, WID_O_SEL_CHOOSE_STATION),
+				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_O_CHOOSE_STATION), SetFill(1, 0),
+						SetStringTip(STR_ORDERS_CHOOSE_STATION_BUTTON, STR_ORDERS_CHOOSE_STATION_TOOLTIP), SetResize(1, 0),
+				NWidget(WWT_PANEL, Colours::Grey),
+				EndContainer(),
+			EndContainer(),
 			NWidget(NWID_BUTTON_DROPDOWN, Colours::Grey, WID_O_GOTO), SetFill(1, 0),
 					SetStringTip(STR_ORDERS_GO_TO_BUTTON, STR_ORDERS_GO_TO_TOOLTIP), SetResize(1, 0),
 		EndContainer(),
@@ -1721,6 +1800,12 @@ static constexpr std::initializer_list<NWidgetPart> _nested_orders_widgets = {
 					SetStringTip(STR_ORDERS_DELETE_BUTTON, STR_ORDERS_DELETE_TOOLTIP), SetResize(1, 0),
 			NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_O_STOP_SHARING), SetFill(1, 0),
 					SetStringTip(STR_ORDERS_STOP_SHARING_BUTTON, STR_ORDERS_STOP_SHARING_TOOLTIP), SetResize(1, 0),
+		EndContainer(),
+		NWidget(NWID_SELECTION, Colours::Invalid, WID_O_SEL_CHOOSE_STATION),
+			NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_O_CHOOSE_STATION), SetFill(1, 0),
+					SetStringTip(STR_ORDERS_CHOOSE_STATION_BUTTON, STR_ORDERS_CHOOSE_STATION_TOOLTIP), SetResize(1, 0),
+			NWidget(WWT_PANEL, Colours::Grey),
+			EndContainer(),
 		EndContainer(),
 		NWidget(NWID_BUTTON_DROPDOWN, Colours::Grey, WID_O_GOTO), SetFill(1, 0),
 				SetStringTip(STR_ORDERS_GO_TO_BUTTON, STR_ORDERS_GO_TO_TOOLTIP), SetResize(1, 0),
