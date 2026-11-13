@@ -22,6 +22,7 @@
 #include "station_base.h"
 #include "industry.h"
 #include "core/geometry_func.hpp"
+#include "zoom_func.h"
 #include "hotkeys.h"
 #include "aircraft.h"
 #include "engine_base.h"
@@ -796,10 +797,19 @@ public:
 	void UpdateWidgetSize(WidgetID widget, Dimension &size, [[maybe_unused]] const Dimension &padding, [[maybe_unused]] Dimension &fill, [[maybe_unused]] Dimension &resize) override
 	{
 		switch (widget) {
-			case WID_O_ORDER_LIST:
-				fill.height = resize.height = std::max(GetCharacterHeight(FontSize::Normal), WidgetDimensions::scaled.min_touch_size);
-				size.height = 6 * resize.height + padding.height;
+			case WID_O_ORDER_LIST: {
+				const int row_height = std::max<int>(GetCharacterHeight(FontSize::Normal), WidgetDimensions::scaled.min_touch_size);
+				fill.height = resize.height = row_height;
+
+				int rows = 6;
+				if (_settings_client.gui.touch_mode) {
+					/* Keep the order window compact so the map remains usable while adding station orders. */
+					const int available_height = std::max<int>(_screen.height - ScaleGUITrad(300), row_height * 2);
+					rows = std::clamp<int>(available_height / row_height, 2, 4);
+				}
+				size.height = rows * resize.height + padding.height;
 				break;
+			}
 
 			case WID_O_COND_VARIABLE: {
 				Dimension d = {0, 0};

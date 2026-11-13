@@ -1484,7 +1484,6 @@ static bool IsTouchExpandableWindow(WindowClass cls)
 		case WindowClass::RoadVehicleList:
 		case WindowClass::ShipList:
 		case WindowClass::AircraftList:
-		case WindowClass::VehicleOrders:
 		case WindowClass::VehicleDepot:
 		case WindowClass::VehicleDetails:
 		case WindowClass::ReplaceVehicle:
