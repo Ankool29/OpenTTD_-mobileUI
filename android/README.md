@@ -176,6 +176,19 @@ l'APK 20 :
 Cet APK doit encore être validé sur téléphone, en particulier les rotations
 et les gestes à plusieurs doigts.
 
+Le code V2.5C (annulation sécurisée et déplacement à deux doigts) est compilé
+et les 107 tests unitaires locaux passent. Le workflow Android a produit
+l'APK 21 :
+
+- exécution GitHub Actions : `43583961082` ;
+- artefact : `openttd-mobile-apk-21` ;
+- fichier : `openttd-mobile-arm64.apk`, 15,8 Mo ;
+- SHA-256 : `2547c950996f6e296c26e4f555ddbee3b97c4414bf91721328e6973dda941ed6`.
+
+Cet APK doit être validé sur téléphone : tracé rail interrompu par un second
+doigt, déplacement à deux doigts avec un outil actif, relâchement partiel,
+rotation, et constructions immédiates.
+
 ## Données de jeu
 
 OpenTTD a besoin d'un baseset graphique (OpenGFX). Au premier lancement,
