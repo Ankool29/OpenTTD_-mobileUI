@@ -2,6 +2,12 @@ name: Android APK
 
 on:
   workflow_dispatch:
+    inputs:
+      diagnostic:
+        description: 'Build a touch/placement diagnostic APK with symbols'
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - 'mobile/**'
@@ -80,7 +86,7 @@ jobs:
       - name: Configure native build
         run: |
           cmake -S . -B build-android -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_BUILD_TYPE=${{ inputs.diagnostic && 'RelWithDebInfo' || 'Release' }} \
             -DHOST_BINARY_DIR="$GITHUB_WORKSPACE/build-host" \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
@@ -90,7 +96,8 @@ jobs:
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_PLATFORM=android-28 \
             -DANDROID_STL=c++_shared \
-            -DOPTION_USE_ASSERTS=OFF
+            -DOPTION_USE_ASSERTS=OFF \
+            -DTOUCH_DIAGNOSTIC=${{ inputs.diagnostic && 'ON' || 'OFF' }}
 
       - name: Build native library
         run: cmake --build build-android --target openttd -j "$(nproc)"
@@ -126,7 +133,16 @@ jobs:
           cp "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" "$JNI_DIR/"
           ls -lh "$JNI_DIR"
 
+      - name: Upload diagnostic native symbols
+        if: ${{ inputs.diagnostic }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: openttd-mobile-diagnostic-symbols-${{ github.run_number }}
+          path: android/app/src/main/jniLibs/arm64-v8a/libmain.so
+          retention-days: 7
+
       - name: Strip native libraries
+        if: ${{ !inputs.diagnostic }}
         run: |
           STRIP="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
           find android/app/src/main/jniLibs -name '*.so' -exec "$STRIP" --strip-unneeded {} +
@@ -135,7 +151,7 @@ jobs:
       - name: Build APK
         env:
           VERSION_CODE: ${{ github.run_number }}
-          VERSION_NAME: 1.0-experimental.${{ github.run_number }}
+          VERSION_NAME: ${{ inputs.diagnostic && format('1.0-diagnostic.{0}', github.run_number) || format('1.0-experimental.{0}', github.run_number) }}
           ANDROID_KEYSTORE_FILE: ${{ secrets.ANDROID_KEYSTORE_FILE }}
           ANDROID_KEYSTORE_TYPE: ${{ secrets.ANDROID_KEYSTORE_TYPE }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -153,6 +169,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: openttd-mobile-apk-${{ github.run_number }}
+          name: ${{ inputs.diagnostic && format('openttd-mobile-apk-diagnostic-{0}', github.run_number) || format('openttd-mobile-apk-{0}', github.run_number) }}
           path: artifacts/
           retention-days: 30

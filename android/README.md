@@ -203,6 +203,28 @@ Cet APK doit être validé sur téléphone : annulation d'un tracé rail par un
 second doigt, absence de crash, puis nouveau tracé et déplacement à deux
 doigts.
 
+## APK diagnostic tactile
+
+Le workflow `Android APK` accepte l'entrée `diagnostic=true`. Il produit alors
+une version identifiée `1.0-diagnostic.<run>` et deux artefacts :
+
+- `openttd-mobile-apk-diagnostic-<run>` : APK installable contenant les logs
+  tactiles et de placement ;
+- `openttd-mobile-diagnostic-symbols-<run>` : `libmain.so` non strippé pour la
+  symbolisation.
+
+Procédure sur téléphone :
+
+1. installer l'APK diagnostic ;
+2. rejouer le scénario qui provoque le crash ;
+3. relancer l'application après le crash ;
+4. le dialogue de diagnostic affiche `Touch diagnostics` et, le cas échéant,
+   `Native crash` ; utiliser `Copy` ou `Share` pour transmettre le rapport.
+
+Le journal est aussi écrit dans le stockage privé de l'application sous
+`touch-diag.log`. Il est remplacé au lancement suivant après affichage. Les
+logs détaillés ne sont pas compilés dans les APK normaux.
+
 ## Données de jeu
 
 OpenTTD a besoin d'un baseset graphique (OpenGFX). Au premier lancement,

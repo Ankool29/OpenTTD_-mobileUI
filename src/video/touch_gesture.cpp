@@ -12,6 +12,8 @@
 #include "../gfx_func.h"
 #include "../core/math_func.hpp"
 #include "../tilehighlight_func.h"
+#include "../touch_diagnostic.h"
+#include "../window_gui.h"
 #include "../window_func.h"
 #include "../zoom_func.h"
 #include "touch_gesture.h"
@@ -327,6 +329,8 @@ void TouchGestureHandler::SetScreenSize(int width, int height)
 
 	Debug(Facility::Driver, Severity::Debug1, "touch: screen size {}x{} -> {}x{}",
 			this->logic.GetScreenWidth(), this->logic.GetScreenHeight(), width, height);
+	TOUCH_DIAGNOSTIC_LOG("touch: screen size {}x{} -> {}x{}",
+			this->logic.GetScreenWidth(), this->logic.GetScreenHeight(), width, height);
 	this->logic.SetScreenSize(width, height);
 }
 
@@ -384,6 +388,8 @@ void TouchGestureHandler::Cancel()
 void TouchGestureHandler::ApplyActions(const TouchGestureActions &actions)
 {
 	if (actions.cancel_placement) {
+		TOUCH_DIAGNOSTIC_LOG("touch action: cancel_placement left={} special={} phase={}",
+				_left_button_down, static_cast<int>(_special_mouse_mode), static_cast<int>(this->logic.GetPhase()));
 		VpCancelPlaceSizing();
 		CancelTouchViewportScroll();
 		_left_button_down = false;
@@ -406,6 +412,9 @@ void TouchGestureHandler::ApplyActions(const TouchGestureActions &actions)
 		const auto [screen_x, screen_y] = this->logic.TouchToScreen(actions.pan_x, actions.pan_y);
 		const int dx = static_cast<int>(std::lround(actions.pan_dx * this->logic.GetScreenWidth()));
 		const int dy = static_cast<int>(std::lround(actions.pan_dy * this->logic.GetScreenHeight()));
+		if (std::hypot(actions.pan_dx, actions.pan_dy) >= 0.02f) {
+			TOUCH_DIAGNOSTIC_LOG("touch action: pan centroid=({}, {}) delta=({}, {})", screen_x, screen_y, dx, dy);
+		}
 		ScrollViewportByScreenPoint(screen_x, screen_y, dx, dy);
 	}
 
@@ -423,6 +432,10 @@ void TouchGestureHandler::LogStateChange(const char *event)
 	if (phase != this->last_phase || finger_count != this->last_finger_count ||
 			long_press != this->last_long_press || two_finger_zoom != this->last_two_finger_zoom) {
 		Debug(Facility::Driver, Severity::Debug1, "touch: {}: phase {} -> {}, fingers {} -> {}, long-press {} -> {}, zoom {} -> {}",
+				event, TouchGesturePhaseName(this->last_phase), TouchGesturePhaseName(phase),
+				this->last_finger_count, finger_count, this->last_long_press, long_press,
+				this->last_two_finger_zoom, two_finger_zoom);
+		TOUCH_DIAGNOSTIC_LOG("touch: {}: phase {} -> {}, fingers {} -> {}, long-press {} -> {}, zoom {} -> {}",
 				event, TouchGesturePhaseName(this->last_phase), TouchGesturePhaseName(phase),
 				this->last_finger_count, finger_count, this->last_long_press, long_press,
 				this->last_two_finger_zoom, two_finger_zoom);

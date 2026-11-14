@@ -12,6 +12,7 @@
 #include "../../core/format.hpp"
 #include "../../core/random_func.hpp"
 #include "../../string_func.h"
+#include "../../touch_diagnostic.h"
 
 #include <SDL_main.h>
 #include <SDL_system.h>
@@ -45,6 +46,10 @@ static const char *ANDROID_LOG_TAG = "OpenTTD";
 static int _startup_log_fd = -1;
 /** File descriptor for the crash log, or -1 when unavailable. */
 static int _crash_log_fd = -1;
+#ifdef TOUCH_DIAGNOSTIC
+/** File descriptor for the touch diagnostic log, or -1 when unavailable. */
+static int _touch_diag_log_fd = -1;
+#endif
 /** Serialises writes to the startup log. */
 static pthread_mutex_t _log_mutex = PTHREAD_MUTEX_INITIALIZER;
 /** Read end of the pipe that receives stdout/stderr. */
@@ -76,6 +81,32 @@ static void AndroidLog(const std::string &message)
 {
 	AndroidLogLine(ANDROID_LOG_INFO, message);
 }
+
+#ifdef TOUCH_DIAGNOSTIC
+/**
+ * Write a touch/placement diagnostic line to logcat and to the diagnostic file.
+ * This is only compiled into diagnostic builds.
+ */
+extern "C" void AndroidTouchDiagnosticLog(const char *message)
+{
+	if (message == nullptr) return;
+	const std::string_view message_view(message);
+	__android_log_write(ANDROID_LOG_INFO, ANDROID_LOG_TAG, message);
+
+	pthread_mutex_lock(&_log_mutex);
+	if (_touch_diag_log_fd >= 0) {
+		if (write(_touch_diag_log_fd, message_view.data(), message_view.size()) < 0) {
+			/* Nothing useful can be done when the log cannot be written. */
+		}
+		if (write(_touch_diag_log_fd, "\n", 1) < 0) {
+			/* Nothing useful can be done when the log cannot be written. */
+		}
+		/* Make the last diagnostic lines survive an immediate SIGSEGV. */
+		fsync(_touch_diag_log_fd);
+	}
+	pthread_mutex_unlock(&_log_mutex);
+}
+#endif
 
 /**
  * Synchronous error logging for fatal paths that call _Exit() immediately.
@@ -120,6 +151,9 @@ static void AndroidLogInit(const char *internal_storage)
 	std::string directory = internal_storage != nullptr ? internal_storage : ".";
 	_startup_log_fd = open((directory + "/startup.log").c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0600);
 	_crash_log_fd = open((directory + "/crash.log").c_str(), O_CREAT | O_WRONLY | O_APPEND, 0600);
+#ifdef TOUCH_DIAGNOSTIC
+	_touch_diag_log_fd = open((directory + "/touch-diag.log").c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0600);
+#endif
 
 	setvbuf(stdout, nullptr, _IOLBF, 0);
 	setvbuf(stderr, nullptr, _IONBF, 0);

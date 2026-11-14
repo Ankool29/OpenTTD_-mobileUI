@@ -248,6 +248,12 @@ include_directories(${CMAKE_SOURCE_DIR}/src/3rdparty/squirrel/include)
 include(MSVCFilters)
 
 add_library(openttd_lib OBJECT ${GENERATED_SOURCE_FILES})
+
+# Optional, non-default instrumentation for Android touch/placement diagnostics.
+option(TOUCH_DIAGNOSTIC "Enable touch/placement diagnostic logging" OFF)
+if(TOUCH_DIAGNOSTIC)
+    target_compile_definitions(openttd_lib PUBLIC TOUCH_DIAGNOSTIC)
+endif()
 if(ANDROID)
     # SDL's Android Java glue loads libmain.so and calls SDL_main() from it.
     add_library(openttd SHARED)

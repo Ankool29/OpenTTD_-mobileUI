@@ -134,6 +134,7 @@ public class OpenTTDActivity extends SDLActivity {
         File previous = new File(getFilesDir(), "startup.prev.log");
         File nativeCrash = new File(getFilesDir(), "crash.log");
         File javaCrash = new File(getFilesDir(), "crash-java.log");
+        File touchDiagnostic = new File(getFilesDir(), "touch-diag.log");
 
         if (startup.isFile()) {
             if (previous.exists() && !previous.delete()) {
@@ -153,6 +154,10 @@ public class OpenTTDActivity extends SDLActivity {
             report.append("Native crash:\n").append(readText(nativeCrash));
             if (!nativeCrash.delete()) Log.w(TAG, "Cannot delete crash.log");
         }
+        if (touchDiagnostic.isFile()) {
+            report.append("Touch diagnostics:\n").append(readText(touchDiagnostic));
+            if (!touchDiagnostic.delete()) Log.w(TAG, "Cannot delete touch-diag.log");
+        }
         if (previous.isFile()) {
             String log = readText(previous);
             if (!log.contains(STARTUP_COMPLETE)) {
@@ -168,7 +173,7 @@ public class OpenTTDActivity extends SDLActivity {
 
     private void showDiagnostics(String text) {
         if (text.length() > 65536) {
-            text = text.substring(0, 65536) + "\n[truncated]\n";
+            text = "[truncated]\n" + text.substring(text.length() - 65536) + "\n";
         }
         final String report = text;
 

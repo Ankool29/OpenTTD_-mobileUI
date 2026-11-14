@@ -13,6 +13,7 @@
 #include "console_func.h"
 #include "console_gui.h"
 #include "viewport_func.h"
+#include "touch_diagnostic.h"
 #include "progress.h"
 #include "blitter/factory.hpp"
 #include "zoom_func.h"
@@ -2925,9 +2926,17 @@ bool ScrollViewportByScreenPoint(int x, int y, int dx, int dy)
 	if (dx == 0 && dy == 0) return false;
 
 	Window *w = FindWindowFromPt(x, y);
-	if (w == nullptr || w->IsCollapsed() || w->viewport == nullptr || IsPtInWindowViewport(w, x, y) == nullptr) return false;
+	if (w == nullptr || w->IsCollapsed() || w->viewport == nullptr || IsPtInWindowViewport(w, x, y) == nullptr) {
+		TOUCH_DIAGNOSTIC_LOG("ScrollViewportByScreenPoint ignored: point=({}, {}) delta=({}, {}) window={} vp={}", x, y, dx, dy, w != nullptr, w != nullptr && w->viewport != nullptr);
+		return false;
+	}
 
 	if (w->viewport->follow_vehicle != VehicleID::Invalid()) w->viewport->CancelFollow(*w);
+#ifdef TOUCH_DIAGNOSTIC
+	TOUCH_DIAGNOSTIC_LOG("ScrollViewportByScreenPoint: point=({}, {}) delta=({}, {}) scroll=({}, {}) virtual=({}, {}) zoom={}",
+			x, y, dx, dy, w->viewport->scrollpos_x, w->viewport->scrollpos_y,
+			w->viewport->virtual_left, w->viewport->virtual_top, static_cast<int>(w->viewport->zoom));
+#endif
 	w->OnScroll({dx, dy});
 	return true;
 }

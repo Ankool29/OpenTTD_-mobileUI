@@ -81,6 +81,7 @@
 #include "waypoint_func.h"
 #include "window_func.h"
 #include "tilehighlight_func.h"
+#include "touch_diagnostic.h"
 #include "window_gui.h"
 #include "linkgraph/linkgraph_gui.h"
 #include "viewport_kdtree.h"
@@ -2202,10 +2203,24 @@ static void SetSelectionTilesDirty()
 		do {
 			/* topmost dirty point */
 			TileIndex top_tile = TileVirtXY(top_x, top_y);
+#ifdef TOUCH_DIAGNOSTIC
+			if (top_tile >= Map::Size() || Map::SizeX() == 0 || Map::SizeY() == 0) {
+				TOUCH_DIAGNOSTIC_LOG("SetSelectionTilesDirty INVALID: top_tile={} map={}x{} size={} pos=({}, {}) size=({}, {}) offs=({}, {}) outer=({}, {}) diag={} x_start={} y_start={} x_end={} y_end={} top_x={} top_y={}",
+						top_tile.base(), Map::SizeX(), Map::SizeY(), Map::Size(), _thd.pos.x, _thd.pos.y,
+						_thd.size.x, _thd.size.y, _thd.offs.x, _thd.offs.y, _thd.outersize.x, _thd.outersize.y,
+						_thd.diagonal, x_start, y_start, x_end, y_end, top_x, top_y);
+			}
+#endif
 			Point top = RemapCoords(top_x, top_y, GetTileMaxPixelZ(top_tile));
 
 			/* bottommost point */
 			TileIndex bottom_tile = TileVirtXY(bot_x, bot_y);
+#ifdef TOUCH_DIAGNOSTIC
+			if (bottom_tile >= Map::Size()) {
+				TOUCH_DIAGNOSTIC_LOG("SetSelectionTilesDirty INVALID bottom: bottom_tile={} map={}x{} size={} bot_x={} bot_y={} top_x={} top_y={}",
+						bottom_tile.base(), Map::SizeX(), Map::SizeY(), Map::Size(), bot_x, bot_y, top_x, top_y);
+			}
+#endif
 			Point bot = RemapCoords(bot_x + TILE_SIZE, bot_y + TILE_SIZE, GetTilePixelZ(bottom_tile)); // bottommost point
 
 			/* the 'x' coordinate of 'top' and 'bot' is the same (and always in the same distance from tile middle),
@@ -2781,6 +2796,13 @@ void UpdateTileSelection()
 		_thd.outersize = _thd.new_outersize;
 		_thd.diagonal = new_diagonal;
 		_thd.dirty = 0xff;
+
+#ifdef TOUCH_DIAGNOSTIC
+		TOUCH_DIAGNOSTIC_LOG("UpdateTileSelection: place={} draw={} next={} pos=({}, {}) size=({}, {}) outer=({}, {}) diag={} selstart=({}, {}) selend=({}, {})",
+				static_cast<int>(_thd.place_mode), static_cast<int>(_thd.drawstyle), static_cast<int>(_thd.next_drawstyle),
+				_thd.pos.x, _thd.pos.y, _thd.size.x, _thd.size.y, _thd.outersize.x, _thd.outersize.y,
+				_thd.diagonal, _thd.selstart.x, _thd.selstart.y, _thd.selend.x, _thd.selend.y);
+#endif
 
 		/* Draw the new tile selection? */
 		if ((new_drawstyle & HT_DRAG_MASK) != HT_NONE) SetSelectionTilesDirty();
@@ -3481,6 +3503,21 @@ EventState VpHandlePlaceSizingDrag()
 {
 	if (_special_mouse_mode != SpecialMouseMode::Sizing && _special_mouse_mode != SpecialMouseMode::Dragging) return EventState::NotHandled;
 
+#ifdef TOUCH_DIAGNOSTIC
+	static SpecialMouseMode diagnostic_last_mode = SpecialMouseMode::None;
+	static bool diagnostic_last_left = false;
+	if (diagnostic_last_mode != _special_mouse_mode || diagnostic_last_left != _left_button_down) {
+		TOUCH_DIAGNOSTIC_LOG("VpHandle: mode={} left={} thd.place={} thd.draw={} thd.next={} method={} proc={} selstart=({}, {}) selend=({}, {}) map={}x{} size={}",
+				static_cast<int>(_special_mouse_mode), _left_button_down,
+				static_cast<int>(_thd.place_mode), static_cast<int>(_thd.drawstyle), static_cast<int>(_thd.next_drawstyle),
+				static_cast<int>(_thd.select_method), static_cast<int>(_thd.select_proc),
+				_thd.selstart.x, _thd.selstart.y, _thd.selend.x, _thd.selend.y,
+				Map::SizeX(), Map::SizeY(), Map::Size());
+		diagnostic_last_mode = _special_mouse_mode;
+		diagnostic_last_left = _left_button_down;
+	}
+#endif
+
 	/* stop drag mode if the window has been closed */
 	Window *w = _thd.GetCallbackWnd();
 	if (w == nullptr) {
@@ -3519,6 +3556,18 @@ EventState VpHandlePlaceSizingDrag()
 	SetTileSelectSize(1, 1);
 
 	HideMeasurementTooltips();
+#ifdef TOUCH_DIAGNOSTIC
+	{
+		const TileIndex diagnostic_start = TileVirtXY(_thd.selstart.x, _thd.selstart.y);
+		const TileIndex diagnostic_end = TileVirtXY(_thd.selend.x, _thd.selend.y);
+		TOUCH_DIAGNOSTIC_LOG("VpHandle release: method={} proc={} selstart=({}, {}) selend=({}, {}) start={} start_valid={} end={} end_valid={} map={}x{} size={} thd.diagonal={} thd.offs=({}, {}) thd.outersize=({}, {})",
+				static_cast<int>(_thd.select_method), static_cast<int>(_thd.select_proc),
+				_thd.selstart.x, _thd.selstart.y, _thd.selend.x, _thd.selend.y,
+				diagnostic_start.base(), diagnostic_start.base() < Map::Size(), diagnostic_end.base(), diagnostic_end.base() < Map::Size(),
+				Map::SizeX(), Map::SizeY(), Map::Size(), _thd.diagonal,
+				_thd.offs.x, _thd.offs.y, _thd.outersize.x, _thd.outersize.y);
+	}
+#endif
 	w->OnPlaceMouseUp(_thd.select_method, _thd.select_proc, _thd.selend, TileVirtXY(_thd.selstart.x, _thd.selstart.y), TileVirtXY(_thd.selend.x, _thd.selend.y));
 
 	return EventState::Handled;
@@ -3533,6 +3582,14 @@ EventState VpHandlePlaceSizingDrag()
 void VpCancelPlaceSizing()
 {
 	if (_special_mouse_mode != SpecialMouseMode::Sizing && _special_mouse_mode != SpecialMouseMode::Dragging) return;
+
+#ifdef TOUCH_DIAGNOSTIC
+	TOUCH_DIAGNOSTIC_LOG("VpCancel before: mode={} place={} draw={} next={} pos=({}, {}) size=({}, {}) offs=({}, {}) outer=({}, {}) diag={} selstart=({}, {}) selend=({}, {}) map={}x{}",
+			static_cast<int>(_special_mouse_mode), static_cast<int>(_thd.place_mode), static_cast<int>(_thd.drawstyle),
+			static_cast<int>(_thd.next_drawstyle), _thd.pos.x, _thd.pos.y, _thd.size.x, _thd.size.y,
+			_thd.offs.x, _thd.offs.y, _thd.outersize.x, _thd.outersize.y, _thd.diagonal,
+			_thd.selstart.x, _thd.selstart.y, _thd.selend.x, _thd.selend.y, Map::SizeX(), Map::SizeY());
+#endif
 
 	_special_mouse_mode = SpecialMouseMode::None;
 
@@ -3570,6 +3627,14 @@ void VpCancelPlaceSizing()
 	_thd.drawstyle = HT_NONE;
 
 	if (had_selection) MarkWholeScreenDirty();
+
+#ifdef TOUCH_DIAGNOSTIC
+	TOUCH_DIAGNOSTIC_LOG("VpCancel after: mode={} place={} draw={} pos=({}, {}) size=({}, {}) offs=({}, {}) outer=({}, {}) diag={} selstart=({}, {}) selend=({}, {}) map={}x{}",
+			static_cast<int>(_special_mouse_mode), static_cast<int>(_thd.place_mode), static_cast<int>(_thd.drawstyle),
+			_thd.pos.x, _thd.pos.y, _thd.size.x, _thd.size.y, _thd.offs.x, _thd.offs.y,
+			_thd.outersize.x, _thd.outersize.y, _thd.diagonal, _thd.selstart.x, _thd.selstart.y,
+			_thd.selend.x, _thd.selend.y, Map::SizeX(), Map::SizeY());
+#endif
 }
 
 /**
