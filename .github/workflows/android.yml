@@ -80,7 +80,8 @@ jobs:
 
       - name: Build host tools
         run: |
-          cmake -S . -B build-host -G Ninja -DOPTION_TOOLS_ONLY=ON
+          cmake -S . -B build-host -G Ninja -DOPTION_TOOLS_ONLY=ON \
+            -DCMAKE_BUILD_TYPE=${{ inputs.diagnostic && 'RelWithDebInfo' || 'Release' }}
           cmake --build build-host --target tools -j "$(nproc)"
 
       - name: Configure native build
