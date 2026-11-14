@@ -2148,6 +2148,15 @@ void MarkTileDirtyByTile(TileIndex tile, int bridge_level_offset, int tile_heigh
  */
 static void SetSelectionTilesDirty()
 {
+	/* An empty or malformed selection has no valid tile rectangle to mark. */
+	if (_thd.size.x < TILE_SIZE || _thd.size.y < TILE_SIZE) {
+#ifdef TOUCH_DIAGNOSTIC
+		TOUCH_DIAGNOSTIC_LOG("SetSelectionTilesDirty SKIP empty/invalid selection: pos=({}, {}) size=({}, {}) draw={} place={}",
+				_thd.pos.x, _thd.pos.y, _thd.size.x, _thd.size.y, static_cast<int>(_thd.drawstyle), static_cast<int>(_thd.place_mode));
+#endif
+		return;
+	}
+
 	int x_size = _thd.size.x;
 	int y_size = _thd.size.y;
 
@@ -3604,7 +3613,6 @@ void VpCancelPlaceSizing()
 	} else {
 		_thd.place_mode = HT_POINT | others;
 	}
-	SetTileSelectSize(1, 1);
 	HideMeasurementTooltips();
 
 	/* Remember whether there was a visible preview, but do not use its
@@ -3615,16 +3623,17 @@ void VpCancelPlaceSizing()
 	 * stale coverage/offset/diagonal fields can be combined with the next
 	 * preview and produce invalid tile coordinates. */
 	_thd.Reset();
-	_thd.size = {0, 0};
+	_thd.size = {TILE_SIZE, TILE_SIZE};
 	_thd.offs = {0, 0};
 	_thd.outersize = {0, 0};
 	_thd.diagonal = false;
-	_thd.new_size = {0, 0};
 	_thd.new_outersize = {0, 0};
 	_thd.dirty = 0;
 	_thd.selstart = {0, 0};
 	_thd.selend = {0, 0};
 	_thd.drawstyle = HT_NONE;
+	/* Re-arm a valid one-tile preview for the tool that remains selected. */
+	SetTileSelectSize(1, 1);
 
 	if (had_selection) MarkWholeScreenDirty();
 
