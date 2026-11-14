@@ -25,6 +25,7 @@ if(NOT OPTION_DEDICATED)
         sdl2_default_v.h
         touch_gesture.cpp
         touch_gesture.h
+        touch_gesture_logic.h
         CONDITION SDL2_FOUND
     )
 

@@ -2,7 +2,7 @@
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
  * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/gpl-2.0>.
+ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <http://www.gnu.org/licenses/>.
  */
 
 /** @file touch_gesture.h Translation of touch input into OpenTTD mouse input. */
@@ -11,6 +11,7 @@
 #define TOUCH_GESTURE_H
 
 #include <SDL.h>
+#include "touch_gesture_logic.h"
 
 /**
  * Translates SDL touch events into the mouse events OpenTTD understands.
@@ -39,45 +40,26 @@ public:
 	 */
 	bool HandleEvent(const SDL_Event &ev);
 
+	/** Cancel an interrupted gesture without leaving a mouse button pressed. */
+	void Cancel();
+
 private:
-	struct Finger {
-		SDL_FingerID id = 0;
-		float x = 0.0f;
-		float y = 0.0f;
-	};
+	TouchGestureLogic logic;
 
-	static constexpr size_t MAX_FINGERS = 2;
-	static constexpr Uint32 LONG_PRESS_MS = 500;
+	TouchGesturePhase last_phase = TouchGesturePhase::Idle;
+	size_t last_finger_count = 0;
+	bool last_long_press = false;
+	bool last_two_finger_zoom = false;
 
-	Finger fingers[MAX_FINGERS];
-	size_t finger_count = 0;
+	void ApplyActions(const TouchGestureActions &actions);
+	void LogStateChange(const char *event);
 
-	int screen_width = 0;
-	int screen_height = 0;
-
-	bool primary_dragging = false;
-	bool primary_long_press = false;
-	bool two_finger_gesture = false;
-	bool two_finger_zoom = false;
-	Uint32 primary_down_time = 0;
-	float primary_start_x = 0.0f;
-	float primary_start_y = 0.0f;
-	float two_finger_start_distance = 0.0f;
-	float two_finger_last_distance = 0.0f;
-	float two_finger_last_centroid_x = 0.0f;
-	float two_finger_last_centroid_y = 0.0f;
-	float two_finger_accumulated = 0.0f;
-
-	Point TouchToScreen(float x, float y) const;
 	void MoveCursor(float x, float y);
 	void PressLeft();
 	void ReleaseLeft();
-	void ClickRight();
 	void ClickLeft();
+	void ClickRight();
 	void Wheel(int steps);
-	void ResetPrimary();
-	void ResetSecondary();
-	void UpdateTwoFingerBaseline();
 };
 
 #endif /* TOUCH_GESTURE_H */

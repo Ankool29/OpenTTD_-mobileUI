@@ -216,6 +216,12 @@ bool VideoDriver_SDL_Base::CreateMainSurface(uint w, uint h, bool resize)
 	if (resize) SDL_SetWindowSize(this->sdl_window, w, h);
 	this->ClientSizeChanged(w, h, true);
 
+	/* Keep the requested resolution in sync with the actual backing store. */
+	if (_screen.width != 0 && _screen.height != 0) {
+		_cur_resolution.width = _screen.width;
+		_cur_resolution.height = _screen.height;
+	}
+
 	/* When in full screen, we will always have the mouse cursor
 	 * within the window, even though SDL does not give us the
 	 * appropriate event to know this. */
@@ -424,7 +430,9 @@ bool VideoDriver_SDL_Base::PollEvent()
 {
 	SDL_Event ev;
 
-	_touch_handler.SetScreenSize(_cur_resolution.width, _cur_resolution.height);
+	const int touch_width = _screen.width != 0 ? static_cast<int>(_screen.width) : _cur_resolution.width;
+	const int touch_height = _screen.height != 0 ? static_cast<int>(_screen.height) : _cur_resolution.height;
+	_touch_handler.SetScreenSize(touch_width, touch_height);
 	_touch_handler.Tick();
 
 	if (!SDL_PollEvent(&ev)) return false;
@@ -506,6 +514,13 @@ bool VideoDriver_SDL_Base::PollEvent()
 			HandleMouseEvents();
 			break;
 
+#ifdef __ANDROID__
+		case SDL_APP_WILLENTERBACKGROUND:
+		case SDL_APP_DIDENTERBACKGROUND:
+			_touch_handler.Cancel();
+			break;
+#endif
+
 		case SDL_QUIT:
 			HandleExitGameRequest();
 			break;
@@ -569,6 +584,9 @@ bool VideoDriver_SDL_Base::PollEvent()
 				/* mouse left the window, undraw cursor */
 				UndrawMouseCursor();
 				_cursor.in_window = false;
+			} else if (ev.window.event == SDL_WINDOWEVENT_FOCUS_LOST || ev.window.event == SDL_WINDOWEVENT_MINIMIZED) {
+				/* Release any touch-owned mouse button when the app loses focus. */
+				_touch_handler.Cancel();
 			}
 			break;
 		}
