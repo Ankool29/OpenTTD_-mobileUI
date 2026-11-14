@@ -189,6 +189,20 @@ Cet APK doit être validé sur téléphone : tracé rail interrompu par un secon
 doigt, déplacement à deux doigts avec un outil actif, relâchement partiel,
 rotation, et constructions immédiates.
 
+Le correctif V2.5C-FIX réinitialise complètement l'état de sélection de tuiles
+lors d'une annulation, afin d'éviter les coordonnées de tuile invalides lors
+du prochain rafraîchissement. Le code est compilé et les 108 tests unitaires
+locaux passent. Le workflow Android a produit l'APK 22 :
+
+- exécution GitHub Actions : `43587650648` ;
+- artefact : `openttd-mobile-apk-22` ;
+- fichier : `openttd-mobile-arm64.apk`, 15,8 Mo ;
+- SHA-256 : `8064cb5b97d5bf0ab2018fd694221c0653fa06ddbe86482fca37afb1b4648223`.
+
+Cet APK doit être validé sur téléphone : annulation d'un tracé rail par un
+second doigt, absence de crash, puis nouveau tracé et déplacement à deux
+doigts.
+
 ## Données de jeu
 
 OpenTTD a besoin d'un baseset graphique (OpenGFX). Au premier lancement,
