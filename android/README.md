@@ -43,6 +43,10 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
   doigt arrive, en conservant l'outil sélectionné. Deux doigts glissés
   ensemble déplacent la carte via le mécanisme natif du viewport, sans zoom
   lorsque la distance entre les doigts reste stable.
+- V2.5C-FIX4 réarme une prévisualisation d'une tuile après annulation et
+  refuse de calculer des tuiles sales pour une sélection vide ou invalide.
+  Le crash `GetTileMaxZ()+0x78` observé avec `place=draw=9` et `size=(0,0)`
+  est ainsi évité sans modifier les commandes de construction ni le zoom.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà
@@ -224,6 +228,13 @@ Procédure sur téléphone :
 Le journal est aussi écrit dans le stockage privé de l'application sous
 `touch-diag.log`. Il est remplacé au lancement suivant après affichage. Les
 logs détaillés ne sont pas compilés dans les APK normaux.
+
+Dernier APK stable (V2.5C-FIX4) :
+
+- exécution GitHub Actions : `43620709698` ;
+- APK : `openttd-mobile-apk-27` ;
+- version : `1.0-experimental.27` ;
+- SHA-256 : `ab3d27a13d10494339c82c573f5803103c3fbc6870a13b10d1828e1aed9fbced`.
 
 Dernier APK diagnostic produit :
 
