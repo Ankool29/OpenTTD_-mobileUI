@@ -3550,13 +3550,26 @@ void VpCancelPlaceSizing()
 	SetTileSelectSize(1, 1);
 	HideMeasurementTooltips();
 
-	/* Remove the drag preview but leave the tool selected. */
-	if ((_thd.drawstyle & HT_DRAG_MASK) != HT_NONE) SetSelectionTilesDirty();
-	_thd.drawstyle = HT_NONE;
-	_thd.pos = {0, 0};
+	/* Remember whether there was a visible preview, but do not use its
+	 * potentially partially-initialised geometry to mark dirty tiles. */
+	const bool had_selection = (_thd.drawstyle & HT_DRAG_MASK) != HT_NONE;
+
+	/* Clear all selection geometry, not just the visible rectangle. Otherwise
+	 * stale coverage/offset/diagonal fields can be combined with the next
+	 * preview and produce invalid tile coordinates. */
+	_thd.Reset();
 	_thd.size = {0, 0};
-	_thd.new_pos = {0, 0};
+	_thd.offs = {0, 0};
+	_thd.outersize = {0, 0};
+	_thd.diagonal = false;
 	_thd.new_size = {0, 0};
+	_thd.new_outersize = {0, 0};
+	_thd.dirty = 0;
+	_thd.selstart = {0, 0};
+	_thd.selend = {0, 0};
+	_thd.drawstyle = HT_NONE;
+
+	if (had_selection) MarkWholeScreenDirty();
 }
 
 /**
