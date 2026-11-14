@@ -34,6 +34,11 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
   déroulantes à l'espace disponible et donne un défilement vertical aux
   onglets Général, Graphismes, Son et Social. L'onglet Avancé conserve son
   défilement existant.
+- La reconnaissance tactile utilise une machine à états explicite (tap,
+  glissement, appui long, deux doigts). Les coordonnées sont resynchronisées
+  après rotation ou redimensionnement, les doigts supplémentaires sont
+  ignorés proprement et les boutons souris sont relâchés en cas
+  d'interruption.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà
@@ -154,6 +159,18 @@ l'APK 19 :
 
 Cet APK n'a pas encore été validé sur un véritable téléphone en portrait
 et en paysage.
+
+Le code V2.5B (fiabilisation des gestes et des coordonnées) est compilé et
+les 105 tests unitaires locaux passent. Le workflow Android a produit
+l'APK 20 :
+
+- exécution GitHub Actions : `43580154189` ;
+- artefact : `openttd-mobile-apk-20` ;
+- fichier : `openttd-mobile-arm64.apk`, 15,8 Mo ;
+- SHA-256 : `aae37d60909bd5451bd8a457a8c93d89d81c5faad27fc98159de5419abb4e619`.
+
+Cet APK doit encore être validé sur téléphone, en particulier les rotations
+et les gestes à plusieurs doigts.
 
 ## Données de jeu
 
