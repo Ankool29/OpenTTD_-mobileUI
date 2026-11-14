@@ -3525,6 +3525,41 @@ EventState VpHandlePlaceSizingDrag()
 }
 
 /**
+ * Cancel an active placement/resizing drag without executing the placement.
+ *
+ * The selected tool and its callback window are kept, so the user can start a
+ * new drag immediately. No OnPlaceMouseUp() is called and no command is posted.
+ */
+void VpCancelPlaceSizing()
+{
+	if (_special_mouse_mode != SpecialMouseMode::Sizing && _special_mouse_mode != SpecialMouseMode::Dragging) return;
+
+	_special_mouse_mode = SpecialMouseMode::None;
+
+	/* Keep the selected tool, but reset it to the original mode. */
+	HighLightStyle others = _thd.place_mode & ~(HT_DRAG_MASK | HT_DIR_MASK);
+	if ((_thd.next_drawstyle & HT_DRAG_MASK) == HT_RECT) {
+		_thd.place_mode = HT_RECT | others;
+	} else if (_thd.select_method & VPM_SIGNALDIRS) {
+		_thd.place_mode = HT_RECT | others;
+	} else if (_thd.select_method & VPM_RAILDIRS) {
+		_thd.place_mode = (_thd.select_method & ~VPM_RAILDIRS) ? _thd.next_drawstyle : (HT_RAIL | others);
+	} else {
+		_thd.place_mode = HT_POINT | others;
+	}
+	SetTileSelectSize(1, 1);
+	HideMeasurementTooltips();
+
+	/* Remove the drag preview but leave the tool selected. */
+	if ((_thd.drawstyle & HT_DRAG_MASK) != HT_NONE) SetSelectionTilesDirty();
+	_thd.drawstyle = HT_NONE;
+	_thd.pos = {0, 0};
+	_thd.size = {0, 0};
+	_thd.new_pos = {0, 0};
+	_thd.new_size = {0, 0};
+}
+
+/**
  * Change the cursor and mouse click/drag handling to a mode for performing special operations like tile area selection, object placement, etc.
  * @param icon New shape of the mouse cursor.
  * @param pal Palette to use.

@@ -91,7 +91,7 @@ TEST_CASE("TouchGesture - two fingers use wheel events without pressing the left
 	CHECK_FALSE(pinch.release_left);
 }
 
-TEST_CASE("TouchGesture - second finger during a drag releases the left button")
+TEST_CASE("TouchGesture - second finger during a drag cancels without releasing left")
 {
 	TouchGestureLogic logic;
 	logic.SetScreenSize(1000, 1000);
@@ -101,9 +101,60 @@ TEST_CASE("TouchGesture - second finger during a drag releases the left button")
 	CHECK(logic.GetPhase() == TouchGesturePhase::PrimaryDragging);
 
 	const TouchGestureActions second_down = logic.HandleDown(2, 0.70f, 0.70f, 20);
-	CHECK(second_down.release_left);
+	CHECK(second_down.cancel_placement);
+	CHECK_FALSE(second_down.release_left);
 	CHECK(second_down.reset_delta);
 	CHECK(logic.GetPhase() == TouchGesturePhase::TwoFinger);
+
+	const TouchGestureActions second_up = logic.HandleUp(2, 0.70f, 0.70f, 30);
+	CHECK_FALSE(second_up.click_left);
+	CHECK_FALSE(second_up.release_left);
+
+	const TouchGestureActions first_up = logic.HandleUp(1, 0.20f, 0.20f, 40);
+	CHECK_FALSE(first_up.click_left);
+	CHECK_FALSE(first_up.release_left);
+	CHECK(logic.GetPhase() == TouchGesturePhase::Idle);
+}
+
+TEST_CASE("TouchGesture - two fingers moved together pan the viewport without wheel or left button")
+{
+	TouchGestureLogic logic;
+	logic.SetScreenSize(1000, 1000);
+
+	logic.HandleDown(1, 0.40f, 0.60f, 0);
+	logic.HandleDown(2, 0.60f, 0.60f, 10);
+
+	/* A single-finger move first is ambiguous; the second move makes the centroid dominate. */
+	const TouchGestureActions first = logic.HandleMotion(1, 0.45f, 0.65f);
+	CHECK_FALSE(first.wheel_steps != 0);
+	CHECK_FALSE(first.press_left);
+
+	const TouchGestureActions pan = logic.HandleMotion(2, 0.65f, 0.65f);
+	CHECK(pan.pan);
+	CHECK(pan.pan_dx < 0.0f);
+	CHECK(pan.pan_dy < 0.0f);
+	CHECK(pan.wheel_steps == 0);
+	CHECK_FALSE(pan.press_left);
+	CHECK_FALSE(pan.release_left);
+	CHECK_FALSE(pan.cancel_placement);
+}
+
+TEST_CASE("TouchGesture - a new tap works after a cancelled two-finger gesture")
+{
+	TouchGestureLogic logic;
+	logic.SetScreenSize(1000, 1000);
+
+	logic.HandleDown(1, 0.20f, 0.20f, 0);
+	REQUIRE(logic.HandleMotion(1, 0.22f, 0.20f).press_left);
+	logic.HandleDown(2, 0.70f, 0.70f, 20);
+	logic.HandleUp(2, 0.70f, 0.70f, 30);
+	logic.HandleUp(1, 0.20f, 0.20f, 40);
+	CHECK(logic.GetPhase() == TouchGesturePhase::Idle);
+
+	logic.HandleDown(3, 0.40f, 0.40f, 50);
+	const TouchGestureActions tap = logic.HandleUp(3, 0.40f, 0.40f, 60);
+	CHECK(tap.click_left);
+	CHECK(logic.GetPhase() == TouchGesturePhase::Idle);
 }
 
 TEST_CASE("TouchGesture - extra fingers and unknown releases do not corrupt the gesture")
@@ -146,7 +197,7 @@ TEST_CASE("TouchGesture - duplicate finger down is ignored")
 	CHECK(logic.GetPhase() == TouchGesturePhase::PrimaryDown);
 }
 
-TEST_CASE("TouchGesture - interruption releases a drag without leaving a button pressed")
+TEST_CASE("TouchGesture - interruption cancels a drag without leaving a button pressed")
 {
 	TouchGestureLogic logic;
 	logic.SetScreenSize(1000, 1000);
@@ -155,7 +206,8 @@ TEST_CASE("TouchGesture - interruption releases a drag without leaving a button 
 	REQUIRE(logic.HandleMotion(1, 0.25f, 0.20f).press_left);
 
 	const TouchGestureActions reset = logic.Reset();
-	CHECK(reset.release_left);
+	CHECK(reset.cancel_placement);
+	CHECK_FALSE(reset.release_left);
 	CHECK(reset.reset_delta);
 	CHECK(logic.GetFingerCount() == 0);
 	CHECK(logic.GetPhase() == TouchGesturePhase::Idle);

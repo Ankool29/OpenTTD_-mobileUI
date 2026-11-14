@@ -39,6 +39,10 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
   après rotation ou redimensionnement, les doigts supplémentaires sont
   ignorés proprement et les boutons souris sont relâchés en cas
   d'interruption.
+- V2.5C annule un tracé en cours sans exécuter de commande lorsqu'un second
+  doigt arrive, en conservant l'outil sélectionné. Deux doigts glissés
+  ensemble déplacent la carte via le mécanisme natif du viewport, sans zoom
+  lorsque la distance entre les doigts reste stable.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà
@@ -226,6 +230,10 @@ adb logcat -s OpenTTD SDL AndroidRuntime DEBUG libc
   téléphone en portrait et en paysage. Les listes déroulantes très longues
   sont plafonnées à la largeur de l'écran ; leur contenu reste accessible
   dans la liste déroulante.
+- L'annulation V2.5C couvre les outils à tracé. Les outils à exécution
+  immédiate (dépôt, tunnel, industrie, etc.) ne sont pas encore soumis à une
+  confirmation et peuvent agir dès le premier clic/seuil. Les mutations
+  directes de l'éditeur (forêt, terrain) ne sont pas annulables.
 - L'APK expérimental est signé avec la clé publique fournie ; ne pas
   l'utiliser pour une distribution de production.
 - Pas encore d'intégration du cycle de vie Android (pause/reprise

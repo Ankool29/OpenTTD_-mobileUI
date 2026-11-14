@@ -33,6 +33,12 @@ struct TouchGestureActions {
 	bool release_left = false;///< Release the left mouse button.
 	bool click_left = false;  ///< Perform a complete left click.
 	bool click_right = false; ///< Perform a complete right click.
+	bool cancel_placement = false; ///< Cancel a sizing drag without calling OnPlaceMouseUp.
+	bool pan = false;         ///< Scroll the viewport by the given normalised delta.
+	float pan_dx = 0.0f;      ///< Normalised horizontal viewport scroll delta.
+	float pan_dy = 0.0f;      ///< Normalised vertical viewport scroll delta.
+	float pan_x = 0.0f;       ///< Normalised centroid X used to find the viewport.
+	float pan_y = 0.0f;       ///< Normalised centroid Y used to find the viewport.
 	int wheel_steps = 0;      ///< Mouse wheel steps; positive is scroll down.
 	bool update_mouse = false;///< Run a mouse update after moving the cursor.
 };
@@ -94,10 +100,15 @@ private:
 	float primary_start_y = 0.0f;
 
 	float two_finger_start_distance = 0.0f;
+	float two_finger_start_centroid_x = 0.0f;
+	float two_finger_start_centroid_y = 0.0f;
 	float two_finger_last_distance = 0.0f;
 	float two_finger_last_centroid_x = 0.0f;
 	float two_finger_last_centroid_y = 0.0f;
 	float two_finger_accumulated = 0.0f;
+	float two_finger_pan_accum_x = 0.0f;
+	float two_finger_pan_accum_y = 0.0f;
+	bool two_finger_mode_decided = false;
 
 	size_t FindFinger(uint64_t id) const;
 	void UpdateTwoFingerBaseline();

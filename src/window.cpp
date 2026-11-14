@@ -2912,6 +2912,35 @@ static EventState HandleViewportScroll()
 }
 
 /**
+ * Scroll the viewport under a screen point by a screen-pixel delta.
+ * This is the native viewport scrolling path used by touch two-finger panning.
+ * @param x Screen X coordinate of the gesture centroid.
+ * @param y Screen Y coordinate of the gesture centroid.
+ * @param dx Horizontal scroll delta in screen pixels.
+ * @param dy Vertical scroll delta in screen pixels.
+ * @return True iff a viewport was scrolled.
+ */
+bool ScrollViewportByScreenPoint(int x, int y, int dx, int dy)
+{
+	if (dx == 0 && dy == 0) return false;
+
+	Window *w = FindWindowFromPt(x, y);
+	if (w == nullptr || w->IsCollapsed() || w->viewport == nullptr || IsPtInWindowViewport(w, x, y) == nullptr) return false;
+
+	if (w->viewport->follow_vehicle != VehicleID::Invalid()) w->viewport->CancelFollow(*w);
+	w->OnScroll({dx, dy});
+	return true;
+}
+
+/** Cancel any mouse-driven viewport scrolling started by touch input. */
+void CancelTouchViewportScroll()
+{
+	_scrolling_viewport = false;
+	_cursor.fix_at = false;
+	_last_scroll_window = nullptr;
+}
+
+/**
  * Check if a window can be made relative top-most window, and if so do
  * it. If a window does not obscure any other windows, it will not
  * be brought to the foreground. Also if the only obscuring windows

@@ -11,6 +11,8 @@
 #include "../debug.h"
 #include "../gfx_func.h"
 #include "../core/math_func.hpp"
+#include "../tilehighlight_func.h"
+#include "../window_func.h"
 #include "../zoom_func.h"
 #include "touch_gesture.h"
 #include "touch_gesture_logic.h"
@@ -18,6 +20,12 @@
 #include <cmath>
 
 #include "../safeguards.h"
+
+static constexpr float TWO_FINGER_DECIDE_DISTANCE = 0.006f; ///< Normalised distance change needed to consider a pinch.
+static constexpr float TWO_FINGER_DECIDE_CENTROID = 0.005f; ///< Normalised centroid movement needed to consider a pan.
+static constexpr float TWO_FINGER_DOMINANCE = 1.25f;        ///< How much one movement must dominate the other.
+static constexpr float TWO_FINGER_PAN_STEP = 0.002f;         ///< Normalised centroid movement per pan update.
+static constexpr float TWO_FINGER_ZOOM_STEP = 0.02f;         ///< Normalised distance change per zoom step.
 
 void TouchGestureLogic::SetScreenSize(int width, int height)
 {
@@ -68,7 +76,10 @@ TouchGestureActions TouchGestureLogic::HandleDown(uint64_t id, float x, float y,
 		this->phase = TouchGesturePhase::PrimaryDown;
 		this->primary_long_press = false;
 		this->two_finger_zoom = false;
+		this->two_finger_mode_decided = false;
 		this->two_finger_accumulated = 0.0f;
+		this->two_finger_pan_accum_x = 0.0f;
+		this->two_finger_pan_accum_y = 0.0f;
 		this->primary_down_time = now;
 		this->primary_start_x = x;
 		this->primary_start_y = y;
@@ -82,15 +93,20 @@ TouchGestureActions TouchGestureLogic::HandleDown(uint64_t id, float x, float y,
 
 	/* A second finger arrived: cancel the tap/long press and start a two-finger gesture. */
 	if (this->phase == TouchGesturePhase::PrimaryDragging) {
-		actions.release_left = true;
+		actions.cancel_placement = true;
 	}
 	this->primary_long_press = true;
 	this->two_finger_zoom = false;
+	this->two_finger_mode_decided = false;
 	this->two_finger_accumulated = 0.0f;
+	this->two_finger_pan_accum_x = 0.0f;
+	this->two_finger_pan_accum_y = 0.0f;
 	this->phase = TouchGesturePhase::TwoFinger;
 	actions.reset_delta = true;
 	this->UpdateTwoFingerBaseline();
 	this->two_finger_start_distance = this->two_finger_last_distance;
+	this->two_finger_start_centroid_x = this->two_finger_last_centroid_x;
+	this->two_finger_start_centroid_y = this->two_finger_last_centroid_y;
 	return actions;
 }
 
@@ -114,24 +130,68 @@ TouchGestureActions TouchGestureLogic::HandleMotion(uint64_t id, float x, float 
 		const float centroid_delta_x = centroid_x - this->two_finger_last_centroid_x;
 		const float centroid_delta_y = centroid_y - this->two_finger_last_centroid_y;
 
-		/* Decide once whether this is a pinch (distance) or a two-finger drag (centroid). */
-		if (this->two_finger_accumulated == 0.0f) {
-			if (std::fabs(distance_delta) < 0.002f && std::hypot(centroid_delta_x, centroid_delta_y) < 0.002f) return actions;
-			this->two_finger_zoom = std::fabs(distance_delta) >= std::hypot(centroid_delta_x, centroid_delta_y);
+		if (!this->two_finger_mode_decided) {
+			const float start_distance_delta = distance - this->two_finger_start_distance;
+			const float start_centroid_x = centroid_x - this->two_finger_start_centroid_x;
+			const float start_centroid_y = centroid_y - this->two_finger_start_centroid_y;
+			const float start_centroid_distance = std::hypot(start_centroid_x, start_centroid_y);
+
+			/* Wait until either a pinch or a pan is clearly dominant. */
+			if (std::fabs(start_distance_delta) < TWO_FINGER_DECIDE_DISTANCE && start_centroid_distance < TWO_FINGER_DECIDE_CENTROID) return actions;
+
+			if (std::fabs(start_distance_delta) >= start_centroid_distance * TWO_FINGER_DOMINANCE &&
+					std::fabs(start_distance_delta) >= TWO_FINGER_DECIDE_DISTANCE) {
+				this->two_finger_zoom = true;
+				this->two_finger_mode_decided = true;
+				this->two_finger_accumulated = start_distance_delta;
+				if (std::fabs(this->two_finger_accumulated) >= TWO_FINGER_ZOOM_STEP) {
+					actions.wheel_steps = this->two_finger_accumulated > 0.0f ? -1 : 1;
+					this->two_finger_accumulated = 0.0f;
+				}
+				this->two_finger_last_distance = distance;
+				this->two_finger_last_centroid_x = centroid_x;
+				this->two_finger_last_centroid_y = centroid_y;
+				return actions;
+			}
+
+			if (start_centroid_distance >= std::fabs(start_distance_delta) * TWO_FINGER_DOMINANCE &&
+					start_centroid_distance >= TWO_FINGER_DECIDE_CENTROID) {
+				this->two_finger_zoom = false;
+				this->two_finger_mode_decided = true;
+				actions.pan = true;
+				actions.pan_x = centroid_x;
+				actions.pan_y = centroid_y;
+				actions.pan_dx = -start_centroid_x;
+				actions.pan_dy = -start_centroid_y;
+				this->two_finger_pan_accum_x = 0.0f;
+				this->two_finger_pan_accum_y = 0.0f;
+				this->two_finger_last_distance = distance;
+				this->two_finger_last_centroid_x = centroid_x;
+				this->two_finger_last_centroid_y = centroid_y;
+				return actions;
+			}
+
+			return actions;
 		}
 
 		if (this->two_finger_zoom) {
 			this->two_finger_accumulated += distance_delta;
 			/* A pinch out (distance grows) means zoom in, which is a negative wheel. */
-			if (std::fabs(this->two_finger_accumulated) >= 0.02f) {
+			if (std::fabs(this->two_finger_accumulated) >= TWO_FINGER_ZOOM_STEP) {
 				actions.wheel_steps = this->two_finger_accumulated > 0.0f ? -1 : 1;
 				this->two_finger_accumulated = 0.0f;
 			}
 		} else {
-			this->two_finger_accumulated += centroid_delta_y;
-			if (std::fabs(this->two_finger_accumulated) >= 0.02f) {
-				actions.wheel_steps = this->two_finger_accumulated > 0.0f ? 1 : -1;
-				this->two_finger_accumulated = 0.0f;
+			this->two_finger_pan_accum_x += centroid_delta_x;
+			this->two_finger_pan_accum_y += centroid_delta_y;
+			if (std::hypot(this->two_finger_pan_accum_x, this->two_finger_pan_accum_y) >= TWO_FINGER_PAN_STEP) {
+				actions.pan = true;
+				actions.pan_x = centroid_x;
+				actions.pan_y = centroid_y;
+				actions.pan_dx = -this->two_finger_pan_accum_x;
+				actions.pan_dy = -this->two_finger_pan_accum_y;
+				this->two_finger_pan_accum_x = 0.0f;
+				this->two_finger_pan_accum_y = 0.0f;
 			}
 		}
 
@@ -181,7 +241,10 @@ TouchGestureActions TouchGestureLogic::HandleUp(uint64_t id, float x, float y, u
 		for (size_t i = index; i + 1 < this->finger_count; ++i) this->fingers[i] = this->fingers[i + 1];
 		--this->finger_count;
 		this->two_finger_zoom = false;
+		this->two_finger_mode_decided = false;
 		this->two_finger_accumulated = 0.0f;
+		this->two_finger_pan_accum_x = 0.0f;
+		this->two_finger_pan_accum_y = 0.0f;
 		if (this->finger_count == 1) {
 			this->phase = TouchGesturePhase::PrimaryDown;
 			this->primary_down_time = now;
@@ -207,7 +270,10 @@ TouchGestureActions TouchGestureLogic::HandleUp(uint64_t id, float x, float y, u
 	this->phase = TouchGesturePhase::Idle;
 	this->primary_long_press = false;
 	this->two_finger_zoom = false;
+	this->two_finger_mode_decided = false;
 	this->two_finger_accumulated = 0.0f;
+	this->two_finger_pan_accum_x = 0.0f;
+	this->two_finger_pan_accum_y = 0.0f;
 	return actions;
 }
 
@@ -230,14 +296,17 @@ TouchGestureActions TouchGestureLogic::Tick(uint32_t now)
 TouchGestureActions TouchGestureLogic::Reset()
 {
 	TouchGestureActions actions;
-	if (this->phase == TouchGesturePhase::PrimaryDragging) actions.release_left = true;
+	if (this->phase == TouchGesturePhase::PrimaryDragging) actions.cancel_placement = true;
 	actions.reset_delta = true;
 
 	this->finger_count = 0;
 	this->phase = TouchGesturePhase::Idle;
 	this->primary_long_press = false;
 	this->two_finger_zoom = false;
+	this->two_finger_mode_decided = false;
 	this->two_finger_accumulated = 0.0f;
+	this->two_finger_pan_accum_x = 0.0f;
+	this->two_finger_pan_accum_y = 0.0f;
 	return actions;
 }
 
@@ -314,6 +383,15 @@ void TouchGestureHandler::Cancel()
 
 void TouchGestureHandler::ApplyActions(const TouchGestureActions &actions)
 {
+	if (actions.cancel_placement) {
+		VpCancelPlaceSizing();
+		CancelTouchViewportScroll();
+		_left_button_down = false;
+		_left_button_clicked = false;
+		_cursor.delta.x = 0;
+		_cursor.delta.y = 0;
+	}
+
 	if (actions.move_cursor) this->MoveCursor(actions.cursor_x, actions.cursor_y);
 	if (actions.reset_delta) {
 		_cursor.delta.x = 0;
@@ -323,6 +401,14 @@ void TouchGestureHandler::ApplyActions(const TouchGestureActions &actions)
 	if (actions.release_left) this->ReleaseLeft();
 	if (actions.click_left) this->ClickLeft();
 	if (actions.click_right) this->ClickRight();
+
+	if (actions.pan) {
+		const auto [screen_x, screen_y] = this->logic.TouchToScreen(actions.pan_x, actions.pan_y);
+		const int dx = static_cast<int>(std::lround(actions.pan_dx * this->logic.GetScreenWidth()));
+		const int dy = static_cast<int>(std::lround(actions.pan_dy * this->logic.GetScreenHeight()));
+		ScrollViewportByScreenPoint(screen_x, screen_y, dx, dy);
+	}
+
 	if (actions.wheel_steps != 0) this->Wheel(actions.wheel_steps);
 	if (actions.update_mouse) HandleMouseEvents();
 }

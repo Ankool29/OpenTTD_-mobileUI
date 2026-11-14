@@ -29,6 +29,9 @@ int PositionNetworkChatWindow(Window *w);
 int GetMainViewTop();
 int GetMainViewBottom();
 
+bool ScrollViewportByScreenPoint(int x, int y, int dx, int dy);
+void CancelTouchViewportScroll();
+
 void InitWindowSystem();
 void UnInitWindowSystem();
 void ResetWindowSystem();
