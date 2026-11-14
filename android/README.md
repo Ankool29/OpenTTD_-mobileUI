@@ -225,6 +225,13 @@ Le journal est aussi écrit dans le stockage privé de l'application sous
 `touch-diag.log`. Il est remplacé au lancement suivant après affichage. Les
 logs détaillés ne sont pas compilés dans les APK normaux.
 
+Dernier APK diagnostic produit :
+
+- exécution GitHub Actions : `43605794191` ;
+- APK : `openttd-mobile-apk-diagnostic-26`, 78 Mo ;
+- SHA-256 : `e6b223c2057d1251c6ec43df9159e3a8e44219e57c3274b842b383992b53bf9c` ;
+- symboles : `openttd-mobile-diagnostic-symbols-26` (`libmain.so` non strippé).
+
 ## Données de jeu
 
 OpenTTD a besoin d'un baseset graphique (OpenGFX). Au premier lancement,
