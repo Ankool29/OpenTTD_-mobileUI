@@ -14,6 +14,10 @@
 #include "window_func.h"
 #include "window_gui.h"
 #include "zoom_func.h"
+#include "timer/timer.h"
+#include "timer/timer_window.h"
+
+#include <chrono>
 #include "widgets/construction_confirmation_widget.h"
 
 #include "table/strings.h"
@@ -95,33 +99,59 @@ static constexpr std::initializer_list<NWidgetPart> _nested_construction_confirm
 };
 
 static WindowDesc _construction_confirmation_desc(
-	WindowPosition::Manual, {}, 0, 0,
+	WindowPosition::Manual, {}, 320, 45,
 	WindowClass::ConstructionConfirmation, WindowClass::None,
 	{WindowDefaultFlag::NoFocus, WindowDefaultFlag::NoClose},
 	_nested_construction_confirmation_widgets
 );
+
+static bool _confirmation_show_pending = false;
+
+/** Create or update the confirmation bar now. */
+static void ShowConstructionConfirmationBar()
+{
+	Window *window = FindWindowById(WindowClass::ConstructionConfirmation, 0);
+	if (window == nullptr) {
+		window = new ConstructionConfirmationWindow(_construction_confirmation_desc);
+	}
+
+	window->InvalidateData(0);
+	window->SetDirty();
+	BringWindowToFrontById(WindowClass::ConstructionConfirmation, 0);
+}
 
 /** Presenter that creates, updates, and closes the confirmation bar. */
 class ConstructionConfirmationGuiPresenter : public ConstructionConfirmationPresenter {
 public:
 	void Show(const ConstructionProposal &) override
 	{
-		Window *window = FindWindowById(WindowClass::ConstructionConfirmation, 0);
-		if (window == nullptr) {
-			new ConstructionConfirmationWindow(_construction_confirmation_desc);
-		} else {
-			window->InvalidateData(0);
-			window->SetDirty();
+		/* The demo can be selected while the toolbar dropdown is still being torn
+		 * down. Creating another window from that callback can leave the new
+		 * window behind the dropdown or without a first paint. Defer until the
+		 * dropdown is gone and the current GUI event has completed. */
+		if (FindWindowById(WindowClass::DropdownMenu, 0) != nullptr) {
+			_confirmation_show_pending = true;
+			return;
 		}
+		ShowConstructionConfirmationBar();
 	}
 
 	void Hide() override
 	{
+		_confirmation_show_pending = false;
 		CloseWindowById(WindowClass::ConstructionConfirmation, 0);
 	}
 };
 
 static ConstructionConfirmationGuiPresenter _construction_confirmation_presenter;
+
+static const IntervalTimer<TimerWindow> _confirmation_show_timer = {std::chrono::milliseconds(1), [](auto) {
+	if (!_confirmation_show_pending) return;
+	if (FindWindowById(WindowClass::DropdownMenu, 0) != nullptr) return;
+
+	_confirmation_show_pending = false;
+	if (ConstructionConfirmation().IsPending()) ShowConstructionConfirmationBar();
+}};
 
 /** Attach the confirmation bar presenter to the controller. */
 void InitConstructionConfirmationGui()

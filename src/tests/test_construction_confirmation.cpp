@@ -133,6 +133,42 @@ TEST_CASE("ConstructionConfirmation - proposal replaces the previous one")
 	CHECK(second_calls == 1);
 }
 
+TEST_CASE("ConstructionConfirmation - presenter can be attached after submit")
+{
+	Map::Allocate(64, 64);
+	FakeConstructionConfirmationPresenter presenter;
+	ConstructionConfirmationController controller;
+	int calls = 0;
+
+	REQUIRE(controller.Submit(MakeProposal(calls)));
+	CHECK(controller.IsPending());
+	CHECK(presenter.shown == 0);
+
+	controller.SetPresenter(&presenter);
+	CHECK(presenter.shown == 1);
+	CHECK(controller.IsPending());
+	controller.Cancel();
+	CHECK(presenter.hidden == 1);
+	CHECK(calls == 0);
+}
+
+TEST_CASE("ConstructionConfirmation - presenter reattachment preserves the proposal")
+{
+	Map::Allocate(64, 64);
+	FakeConstructionConfirmationPresenter first;
+	FakeConstructionConfirmationPresenter second;
+	ConstructionConfirmationController controller(&first);
+	int calls = 0;
+
+	REQUIRE(controller.Submit(MakeProposal(calls)));
+	controller.SetPresenter(&second);
+	CHECK(first.hidden == 1);
+	CHECK(second.shown == 1);
+	CHECK(controller.IsPending());
+	CHECK(controller.Confirm());
+	CHECK(calls == 1);
+}
+
 TEST_CASE("ConstructionConfirmation - validation can reject a proposal")
 {
 	Map::Allocate(64, 64);

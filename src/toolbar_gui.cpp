@@ -335,7 +335,10 @@ static CallBackFunction MenuClickSettings(int index)
 		case OptionMenuEntries::SandboxOptions: ShowCheatWindow(); break;
 		case OptionMenuEntries::Transparencies: ShowTransparencyToolbar(); break;
 #if defined(ANDROID_EXPERIMENTAL)
-		case OptionMenuEntries::TestConfirmation: ShowConstructionConfirmationDemo(); return CallBackFunction::None;
+		case OptionMenuEntries::TestConfirmation:
+			InitConstructionConfirmationGui();
+			ShowConstructionConfirmationDemo();
+			return CallBackFunction::None;
 #endif
 
 		case OptionMenuEntries::ShowTownNames: _display_opt.Flip(DisplayOption::ShowTownNames); break;

@@ -58,6 +58,10 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
   expérimentaux : barre d'outils principale, bouton Options (icône engrenage),
   entrée `Test confirmation`. L'entrée est absente des builds sans
   `-DANDROID_EXPERIMENTAL=ON`.
+- V2.5D-B2 garantit l'affichage de la barre de démonstration : le présentateur
+  est réattached au moment de l'action, l'affichage est différé tant qu'un menu
+  déroulant est encore présent, puis la fenêtre est dimensionnée, ramenée au
+  premier plan et marquée pour repeinture.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà
