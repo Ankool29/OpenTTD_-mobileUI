@@ -2646,7 +2646,7 @@ void SetRedErrorSquare(TileIndex tile)
  */
 void SetTileSelectSize(int w, int h)
 {
-	ConstructionConfirmation().Invalidate();
+	ConstructionConfirmation().Invalidate("tool selection size changed");
 	_thd.new_size.x = w * TILE_SIZE;
 	_thd.new_size.y = h * TILE_SIZE;
 	_thd.new_outersize.x = 0;
@@ -3672,7 +3672,7 @@ void SetObjectToPlaceWnd(CursorID icon, PaletteID pal, HighLightStyle mode, Wind
  */
 void SetObjectToPlace(CursorID icon, PaletteID pal, HighLightStyle mode, WindowClass window_class, WindowNumber window_num)
 {
-	ConstructionConfirmation().Invalidate();
+	ConstructionConfirmation().Invalidate("tool changed or reset");
 
 	if (_thd.window_class != WindowClass::Invalid) {
 		/* Undo clicking on button and drag & drop */

@@ -12,6 +12,7 @@
 #include "../3rdparty/catch2/catch.hpp"
 
 #include "../construction_confirmation.h"
+#include "../construction_confirmation_gui.h"
 #include "../map_func.h"
 #include "../tilehighlight_func.h"
 #include "../viewport_func.h"
@@ -291,4 +292,41 @@ TEST_CASE("ConstructionConfirmation - demo never changes the map")
 	CHECK_FALSE(controller.IsPending());
 
 	controller.SetPresenter(nullptr);
+}
+
+TEST_CASE("ConstructionConfirmation - bar position is above the statusbar")
+{
+	Point pt = GetConstructionConfirmationBarPosition(800, 600, 550, 320, 45);
+	CHECK(pt.x == 240);
+	CHECK(pt.y == 505);
+
+	pt = GetConstructionConfirmationBarPosition(300, 400, 380, 320, 45);
+	CHECK(pt.x == 0);
+	CHECK(pt.y == 335);
+
+	pt = GetConstructionConfirmationBarPosition(800, 600, -1, 320, 45);
+	CHECK(pt.x == 240);
+	CHECK(pt.y == 555);
+}
+
+TEST_CASE("ConstructionConfirmation - deferred presentation waits for dropdown")
+{
+	ConstructionConfirmationPresentationQueue queue;
+
+	CHECK_FALSE(queue.Request(true));
+	CHECK(queue.IsPending());
+
+	CHECK_FALSE(queue.Tick(true, true));
+	CHECK(queue.IsPending());
+
+	CHECK(queue.Tick(false, true));
+	CHECK_FALSE(queue.IsPending());
+
+	CHECK(queue.Request(false));
+	CHECK_FALSE(queue.IsPending());
+
+	queue.Request(true);
+	CHECK(queue.IsPending());
+	queue.Cancel();
+	CHECK_FALSE(queue.IsPending());
 }

@@ -19,6 +19,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 
 /** The verb shown on the confirmation bar. */
 enum class ConstructionActionType : uint8_t {
@@ -85,8 +86,8 @@ public:
 	bool Confirm();
 	bool Confirm(uint64_t token);
 	void Cancel();
-	void Invalidate();
-	void InvalidateForWindow(WindowClass window_class, WindowNumber window_number, uint64_t identity);
+	void Invalidate(std::string_view reason = "unspecified");
+	void InvalidateForWindow(WindowClass window_class, WindowNumber window_number, uint64_t identity, std::string_view reason = "owner window closed");
 	void NotifyCompanyChanged();
 	void NotifyMapChanged();
 
@@ -97,7 +98,7 @@ public:
 
 private:
 	bool IsValid(const ConstructionProposal &proposal) const;
-	void Clear();
+	void Clear(std::string_view reason);
 	void HidePresenter();
 
 	std::optional<ConstructionProposal> pending;

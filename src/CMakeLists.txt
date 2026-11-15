@@ -129,7 +129,9 @@ add_files(
     company_type.h
     construction_confirmation.cpp
     construction_confirmation.h
+    construction_confirmation_diagnostic.h
     construction_confirmation_gui.cpp
+    construction_confirmation_gui.h
     console.cpp
     console_cmds.cpp
     console_func.h

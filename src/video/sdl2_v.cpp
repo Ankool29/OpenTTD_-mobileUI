@@ -519,7 +519,7 @@ bool VideoDriver_SDL_Base::PollEvent()
 		case SDL_APP_WILLENTERBACKGROUND:
 		case SDL_APP_DIDENTERBACKGROUND:
 			_touch_handler.Cancel();
-			ConstructionConfirmation().Invalidate();
+			ConstructionConfirmation().Invalidate("Android background");
 			break;
 #endif
 
@@ -589,7 +589,7 @@ bool VideoDriver_SDL_Base::PollEvent()
 			} else if (ev.window.event == SDL_WINDOWEVENT_FOCUS_LOST || ev.window.event == SDL_WINDOWEVENT_MINIMIZED) {
 				/* Release any touch-owned mouse button when the app loses focus. */
 				_touch_handler.Cancel();
-				ConstructionConfirmation().Invalidate();
+				ConstructionConfirmation().Invalidate("focus lost or minimized");
 			}
 			break;
 		}

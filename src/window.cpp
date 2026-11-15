@@ -1352,7 +1352,7 @@ void Window::Close([[maybe_unused]] int data)
 	/* Don't close twice. */
 	if (*this->z_position == nullptr) return;
 
-	ConstructionConfirmation().InvalidateForWindow(this->window_class, this->window_number, this->GetIdentity());
+	ConstructionConfirmation().InvalidateForWindow(this->window_class, this->window_number, this->GetIdentity(), "owner window closed");
 
 	const bool was_collapsed = this->IsCollapsed();
 	*this->z_position = nullptr;
@@ -3883,7 +3883,7 @@ void DeleteAllMessages()
  */
 void CloseConstructionWindows()
 {
-	ConstructionConfirmation().Invalidate();
+	ConstructionConfirmation().Invalidate("construction windows closed");
 
 	/* Note: the container remains stable, even when deleting windows. */
 	for (Window *w : Window::Iterate()) {

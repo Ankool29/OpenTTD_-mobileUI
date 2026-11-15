@@ -58,10 +58,11 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
   expérimentaux : barre d'outils principale, bouton Options (icône engrenage),
   entrée `Test confirmation`. L'entrée est absente des builds sans
   `-DANDROID_EXPERIMENTAL=ON`.
-- V2.5D-B2 garantit l'affichage de la barre de démonstration : le présentateur
-  est réattached au moment de l'action, l'affichage est différé tant qu'un menu
-  déroulant est encore présent, puis la fenêtre est dimensionnée, ramenée au
-  premier plan et marquée pour repeinture.
+- V2.5D-B2 renforce la présentation de la barre de démonstration : le
+  présentateur est réattaché au moment de l'action, l'affichage est différé
+  tant qu'un menu déroulant est encore présent, puis la fenêtre est
+  dimensionnée, ramenée au premier plan et marquée pour repeinture. L'affichage
+  réel sur appareil reste à confirmer.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà
@@ -243,6 +244,16 @@ Procédure sur téléphone :
 Le journal est aussi écrit dans le stockage privé de l'application sous
 `touch-diag.log`. Il est remplacé au lancement suivant après affichage. Les
 logs détaillés ne sont pas compilés dans les APK normaux.
+
+Diagnostic V2.5D-B3 :
+
+- l'APK doit être construit avec `diagnostic=true` afin d'activer
+  `TOUCH_DIAGNOSTIC` ;
+- reproduire le clic sur `Test confirmation` ;
+- fermer complètement l'application puis la relancer ;
+- le dialogue `OpenTTD startup diagnostics` affiche les lignes
+  `confirmation[N]` du fichier `touch-diag.log` ; utiliser `Share` ou `Copy`
+  avant `Continue`.
 
 Dernier APK expérimental (V2.5D-B2) :
 
