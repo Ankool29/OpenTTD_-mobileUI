@@ -457,6 +457,7 @@ STR_SETTINGS_MENU_GAMESCRIPT_SETTINGS                           :Game script set
 STR_SETTINGS_MENU_NEWGRF_SETTINGS                               :NewGRF settings
 STR_SETTINGS_MENU_SANDBOX_OPTIONS                               :Sandbox options
 STR_SETTINGS_MENU_TRANSPARENCY_OPTIONS                          :Transparency options
+STR_SETTINGS_MENU_TEST_CONFIRMATION                             :Test confirmation
 STR_SETTINGS_MENU_TOWN_NAMES_DISPLAYED                          :Town names displayed
 STR_SETTINGS_MENU_STATION_NAMES_DISPLAYED                       :Station names displayed
 STR_SETTINGS_MENU_STATION_NAMES_TRAIN                           :Train stations

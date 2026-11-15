@@ -54,6 +54,10 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
   de fenêtre et à la perte de focus. La commande console isolée
   `construction_confirm_demo` affiche une proposition de démonstration qui ne
   poste aucune commande et ne modifie ni la carte ni l'économie.
+- V2.5D-B1 expose la même démonstration au doigt dans les APK Android
+  expérimentaux : barre d'outils principale, bouton Options (icône engrenage),
+  entrée `Test confirmation`. L'entrée est absente des builds sans
+  `-DANDROID_EXPERIMENTAL=ON`.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà

@@ -30,6 +30,9 @@
 #include "strings_func.h"
 #include "company_func.h"
 #include "company_gui.h"
+#if defined(ANDROID_EXPERIMENTAL)
+#include "construction_confirmation.h"
+#endif
 #include "vehicle_base.h"
 #include "cheat_func.h"
 #include "transparency_gui.h"
@@ -265,6 +268,9 @@ enum class OptionMenuEntries : uint8_t {
 	FullDetails, ///< Toggle full details.
 	TransparentBuildings, ///< Toggle buildings transparency.
 	TransparentStationSigns, ///< Toggle transparency of signs and names.
+#if defined(ANDROID_EXPERIMENTAL)
+	TestConfirmation, ///< Open the isolated construction confirmation demo.
+#endif
 };
 
 /**
@@ -289,6 +295,9 @@ static CallBackFunction ToolbarOptionsClick(Window *w)
 		list.push_back(MakeDropDownListStringItem(STR_SETTINGS_MENU_SANDBOX_OPTIONS, OptionMenuEntries::SandboxOptions));
 	}
 	list.push_back(MakeDropDownListStringItem(STR_SETTINGS_MENU_TRANSPARENCY_OPTIONS, OptionMenuEntries::Transparencies));
+#if defined(ANDROID_EXPERIMENTAL)
+	list.push_back(MakeDropDownListStringItem(STR_SETTINGS_MENU_TEST_CONFIRMATION, OptionMenuEntries::TestConfirmation));
+#endif
 	list.push_back(MakeDropDownListDividerItem());
 	list.push_back(MakeDropDownListCheckedItem(_display_opt.Test(DisplayOption::ShowTownNames), STR_SETTINGS_MENU_TOWN_NAMES_DISPLAYED, OptionMenuEntries::ShowTownNames));
 	list.push_back(MakeDropDownListCheckedItem(_display_opt.Test(DisplayOption::ShowStationNames), STR_SETTINGS_MENU_STATION_NAMES_DISPLAYED, OptionMenuEntries::ShowStationNames));
@@ -325,6 +334,9 @@ static CallBackFunction MenuClickSettings(int index)
 		case OptionMenuEntries::NewGRFSettings: ShowNewGRFSettings(!_networking && _settings_client.gui.UserIsAllowedToChangeNewGRFs(), true, true, _grfconfig); return CallBackFunction::None;
 		case OptionMenuEntries::SandboxOptions: ShowCheatWindow(); break;
 		case OptionMenuEntries::Transparencies: ShowTransparencyToolbar(); break;
+#if defined(ANDROID_EXPERIMENTAL)
+		case OptionMenuEntries::TestConfirmation: ShowConstructionConfirmationDemo(); return CallBackFunction::None;
+#endif
 
 		case OptionMenuEntries::ShowTownNames: _display_opt.Flip(DisplayOption::ShowTownNames); break;
 		case OptionMenuEntries::ShowStationNames: _display_opt.Flip(DisplayOption::ShowStationNames); break;

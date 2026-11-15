@@ -98,7 +98,8 @@ jobs:
             -DANDROID_PLATFORM=android-28 \
             -DANDROID_STL=c++_shared \
             -DOPTION_USE_ASSERTS=OFF \
-            -DTOUCH_DIAGNOSTIC=${{ inputs.diagnostic && 'ON' || 'OFF' }}
+            -DTOUCH_DIAGNOSTIC=${{ inputs.diagnostic && 'ON' || 'OFF' }} \
+            -DANDROID_EXPERIMENTAL=ON
 
       - name: Build native library
         run: cmake --build build-android --target openttd -j "$(nproc)"
