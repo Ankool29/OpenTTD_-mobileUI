@@ -240,7 +240,14 @@ Le journal est aussi écrit dans le stockage privé de l'application sous
 `touch-diag.log`. Il est remplacé au lancement suivant après affichage. Les
 logs détaillés ne sont pas compilés dans les APK normaux.
 
-Dernier APK expérimental (V2.5D-B) :
+Dernier APK expérimental (V2.5D-B1) :
+
+- exécution GitHub Actions : `43718152712` ;
+- APK : `openttd-mobile-apk-29` ;
+- version : `1.0-experimental.29` ;
+- SHA-256 : `af863308582180b213082b96cdb6b1f4e572fb9c81774d96d86504c959f0bd38`.
+
+APK expérimental précédent (V2.5D-B) :
 
 - exécution GitHub Actions : `43714627283` ;
 - APK : `openttd-mobile-apk-28` ;
