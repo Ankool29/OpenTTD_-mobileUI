@@ -297,6 +297,14 @@ Dernier APK stable (V2.5C-FIX4) :
 
 Dernier APK diagnostic produit :
 
+- exécution GitHub Actions : `43757696870` ;
+- APK : `openttd-mobile-apk-diagnostic-38` ;
+- version : `1.0-diagnostic.38` ;
+- SHA-256 : `d60b405d117ab62f28b21b3e91963fb05bb796b01e308107f0d458ef2a850f72` ;
+- symboles : `openttd-mobile-diagnostic-symbols-38` (`libmain.so` non strippé).
+
+APK diagnostic précédent :
+
 - exécution GitHub Actions : `43750502563` ;
 - APK : `openttd-mobile-apk-diagnostic-36` ;
 - version : `1.0-diagnostic.36` ;
