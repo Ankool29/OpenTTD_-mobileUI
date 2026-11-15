@@ -127,6 +127,9 @@ add_files(
     company_gui.h
     company_manager_face.h
     company_type.h
+    construction_confirmation.cpp
+    construction_confirmation.h
+    construction_confirmation_gui.cpp
     console.cpp
     console_cmds.cpp
     console_func.h

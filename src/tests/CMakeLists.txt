@@ -15,6 +15,7 @@ add_test_files(
     string_inplace.cpp
     string_func.cpp
     test_main.cpp
+    test_construction_confirmation.cpp
     test_network_crypto.cpp
     test_placement_cancel.cpp
     test_script_admin.cpp

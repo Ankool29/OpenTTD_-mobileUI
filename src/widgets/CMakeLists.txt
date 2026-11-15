@@ -7,6 +7,7 @@ add_files(
     build_vehicle_widget.h
     cheat_widget.h
     company_widget.h
+    construction_confirmation_widget.h
     console_widget.h
     date_widget.h
     depot_widget.h

@@ -89,6 +89,7 @@
 #include "viewport_sprite_sorter.h"
 #include "bridge_map.h"
 #include "command_func.h"
+#include "construction_confirmation.h"
 #include "network/network_func.h"
 #include "framerate_type.h"
 #include "viewport_cmd.h"
@@ -2645,6 +2646,7 @@ void SetRedErrorSquare(TileIndex tile)
  */
 void SetTileSelectSize(int w, int h)
 {
+	ConstructionConfirmation().Invalidate();
 	_thd.new_size.x = w * TILE_SIZE;
 	_thd.new_size.y = h * TILE_SIZE;
 	_thd.new_outersize.x = 0;
@@ -3670,6 +3672,8 @@ void SetObjectToPlaceWnd(CursorID icon, PaletteID pal, HighLightStyle mode, Wind
  */
 void SetObjectToPlace(CursorID icon, PaletteID pal, HighLightStyle mode, WindowClass window_class, WindowNumber window_num)
 {
+	ConstructionConfirmation().Invalidate();
+
 	if (_thd.window_class != WindowClass::Invalid) {
 		/* Undo clicking on button and drag & drop */
 		Window *w = _thd.GetCallbackWnd();

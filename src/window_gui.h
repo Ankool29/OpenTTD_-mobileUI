@@ -278,6 +278,7 @@ enum class TooltipCloseCondition : uint8_t {
 struct Window {
 private:
 	static std::vector<Window *> closed_windows;
+	uint64_t identity = 0; ///< Process-unique identity, used to reject stale GUI proposals.
 
 protected:
 	void InitializeData(WindowNumber window_number);
@@ -292,6 +293,9 @@ protected:
 
 public:
 	Window(WindowDesc &desc);
+
+	/** Get the process-unique identity of this window. */
+	uint64_t GetIdentity() const { return this->identity; }
 
 	/**
 	 * Helper allocation function to disallow something.

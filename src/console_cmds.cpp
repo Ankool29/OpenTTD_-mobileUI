@@ -10,6 +10,7 @@
 #include "stdafx.h"
 #include "core/string_consumer.hpp"
 #include "console_internal.h"
+#include "construction_confirmation.h"
 #include "debug.h"
 #include "engine_func.h"
 #include "landscape.h"
@@ -2958,6 +2959,13 @@ static bool ConDumpInfo(std::span<std::string_view> argv)
 }
 
 /** Console command registration. */
+/** Show the isolated construction confirmation demo; it never posts a command. */
+static bool ConConstructionConfirmDemo([[maybe_unused]] std::span<std::string_view> argv)
+{
+	ShowConstructionConfirmationDemo();
+	return true;
+}
+
 void IConsoleStdLibRegister()
 {
 	IConsole::CmdRegister("debug_level",             ConDebugLevel);
@@ -3094,6 +3102,7 @@ void IConsoleStdLibRegister()
 #endif
 	IConsole::CmdRegister("fps",                     ConFramerate);
 	IConsole::CmdRegister("fps_wnd",                 ConFramerateWindow);
+	IConsole::CmdRegister("construction_confirm_demo", ConConstructionConfirmDemo);
 
 	/* NewGRF development stuff */
 	IConsole::CmdRegister("reload_newgrfs",          ConNewGRFReload,     ConHookNewGRFDeveloperTool);

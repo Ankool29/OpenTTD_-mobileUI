@@ -9,6 +9,7 @@
 
 #include "stdafx.h"
 #include "company_base.h"
+#include "construction_confirmation.h"
 #include "company_func.h"
 #include "company_gui.h"
 #include "town.h"
@@ -136,6 +137,7 @@ void SetLocalCompany(CompanyID new_company, bool switching_game)
 	_current_company = _local_company = new_company;
 
 	if (switching_company) {
+		ConstructionConfirmation().NotifyCompanyChanged();
 		InvalidateWindowClassesData(WindowClass::Company);
 		InvalidateWindowClassesData(WindowClass::VehicleView);
 		/* Delete any construction windows... */

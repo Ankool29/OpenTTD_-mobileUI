@@ -47,6 +47,13 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
   refuse de calculer des tuiles sales pour une sélection vide ou invalide.
   Le crash `GetTileMaxZ()+0x78` observé avec `place=draw=9` et `size=(0,0)`
   est ainsi évité sans modifier les commandes de construction ni le zoom.
+- V2.5D-B ajoute la fondation d'une confirmation explicite des constructions
+  et démolitions, sans encore activer cet écran pour les outils réels. La
+  barre non modale se place au-dessus de la barre d'état, conserve l'outil
+  après annulation et réagit aux changements d'outil, de compagnie, de carte,
+  de fenêtre et à la perte de focus. La commande console isolée
+  `construction_confirm_demo` affiche une proposition de démonstration qui ne
+  poste aucune commande et ne modifie ni la carte ni l'économie.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà

@@ -81,6 +81,12 @@ enum class WindowClass : uint16_t {
 	Statusbar,
 
 	/**
+	 * Construction confirmation bar; %Window numbers:
+	 *   - 0 = #ConstructionConfirmationWidgets
+	 */
+	ConstructionConfirmation,
+
+	/**
 	 * Build toolbar; %Window numbers:
 	 *   - #TransportType::Rail = #RailToolbarWidgets
 	 *   - #TransportType::Air = #AirportToolbarWidgets

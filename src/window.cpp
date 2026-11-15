@@ -11,6 +11,7 @@
 #include "company_func.h"
 #include "gfx_func.h"
 #include "console_func.h"
+#include "construction_confirmation.h"
 #include "console_gui.h"
 #include "viewport_func.h"
 #include "touch_diagnostic.h"
@@ -54,6 +55,7 @@ static Window *_mouseover_last_w = nullptr; ///< Window of the last OnMouseOver 
 static Window *_last_scroll_window = nullptr; ///< Window of the last scroll event.
 static int _collapsed_scroll[2] = {0, 0}; ///< Scroll offset of the collapsed tabs on each side.
 static uint32_t _collapse_sequence = 0; ///< Sequence counter for stable ordering of collapsed tabs.
+static uint64_t _next_window_identity = 1; ///< Source of process-unique window identities.
 
 static void LayoutCollapsedWindows();
 static bool IsCollapsibleWindowClass(WindowClass wc);
@@ -1350,6 +1352,8 @@ void Window::Close([[maybe_unused]] int data)
 	/* Don't close twice. */
 	if (*this->z_position == nullptr) return;
 
+	ConstructionConfirmation().InvalidateForWindow(this->window_class, this->window_number, this->GetIdentity());
+
 	const bool was_collapsed = this->IsCollapsed();
 	*this->z_position = nullptr;
 
@@ -1585,6 +1589,10 @@ static uint GetWindowZPriority(WindowClass wc)
 			[[fallthrough]];
 
 		case WindowClass::DropdownMenu:
+			++z_priority;
+			[[fallthrough]];
+
+		case WindowClass::ConstructionConfirmation:
 			++z_priority;
 			[[fallthrough]];
 
@@ -2133,6 +2141,7 @@ void Window::InitNested(WindowNumber window_number)
  */
 Window::Window(WindowDesc &desc) : window_desc(desc), scale(_gui_scale), mouse_capture_widget(INVALID_WIDGET)
 {
+	this->identity = _next_window_identity++;
 	this->z_position = _z_windows.insert(_z_windows.end(), this);
 }
 
@@ -2178,6 +2187,8 @@ void InitWindowSystem()
 
 	InitDepotWindowBlockSizes();
 
+	InitConstructionConfirmationGui();
+
 	ShowFirstError();
 }
 
@@ -2200,6 +2211,7 @@ void UnInitWindowSystem()
  */
 void ResetWindowSystem()
 {
+	ConstructionConfirmation().NotifyMapChanged();
 	UnInitWindowSystem();
 	InitWindowSystem();
 	_thd.Reset();
@@ -3871,6 +3883,8 @@ void DeleteAllMessages()
  */
 void CloseConstructionWindows()
 {
+	ConstructionConfirmation().Invalidate();
+
 	/* Note: the container remains stable, even when deleting windows. */
 	for (Window *w : Window::Iterate()) {
 		if (w->window_desc.flags.Test(WindowDefaultFlag::Construction)) {
@@ -4074,6 +4088,13 @@ void RelocateAllWindows(int neww, int newh)
 			case WindowClass::MainToolbar:
 			case WindowClass::Statusbar:
 				continue;
+
+			case WindowClass::ConstructionConfirmation: {
+				const Window *statusbar = FindWindowById(WindowClass::Statusbar, 0);
+				top = std::max<int>(0, newh - w->height - (statusbar == nullptr ? 0 : statusbar->height));
+				left = std::max<int>(0, (neww - w->width) / 2);
+				break;
+			}
 
 			case WindowClass::News:
 				top = newh - w->height;

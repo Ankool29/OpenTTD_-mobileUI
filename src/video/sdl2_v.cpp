@@ -19,6 +19,7 @@
 #include "../fileio_func.h"
 #include "../framerate_type.h"
 #include "../window_func.h"
+#include "../construction_confirmation.h"
 #include "sdl2_v.h"
 #include "touch_gesture.h"
 #include <SDL.h>
@@ -518,6 +519,7 @@ bool VideoDriver_SDL_Base::PollEvent()
 		case SDL_APP_WILLENTERBACKGROUND:
 		case SDL_APP_DIDENTERBACKGROUND:
 			_touch_handler.Cancel();
+			ConstructionConfirmation().Invalidate();
 			break;
 #endif
 
@@ -587,6 +589,7 @@ bool VideoDriver_SDL_Base::PollEvent()
 			} else if (ev.window.event == SDL_WINDOWEVENT_FOCUS_LOST || ev.window.event == SDL_WINDOWEVENT_MINIMIZED) {
 				/* Release any touch-owned mouse button when the app loses focus. */
 				_touch_handler.Cancel();
+				ConstructionConfirmation().Invalidate();
 			}
 			break;
 		}
