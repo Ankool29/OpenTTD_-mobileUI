@@ -63,6 +63,10 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
   tant qu'un menu déroulant est encore présent, puis la fenêtre est
   dimensionnée, ramenée au premier plan et marquée pour repeinture. L'affichage
   réel sur appareil reste à confirmer.
+- V2.5D-B4 ajoute un diagnostic de rendu : dimensions écran/statusbar/toolbar,
+  géométrie des widgets, rectangle de clipping `OnPaint`, fenêtres situées
+  devant la barre, couleurs très contrastées et première repeinture. Ces
+  éléments ne sont actifs que dans l'APK diagnostique.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà

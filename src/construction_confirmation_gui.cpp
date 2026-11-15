@@ -42,9 +42,22 @@ struct ConstructionConfirmationWindow : Window {
 	ConstructionConfirmationWindow(WindowDesc &desc) : Window(desc)
 	{
 		this->InitNested();
-		ConstructionDiag("window constructed: class={} number={} pos=({},{}) size={}x{} z={} nested={}x{}",
+#ifdef TOUCH_DIAGNOSTIC
+		this->GetWidget<NWidgetCore>(WID_CC_LABEL)->colour = Colours::Red;
+		this->GetWidget<NWidgetCore>(WID_CC_CANCEL)->colour = Colours::Yellow;
+		this->GetWidget<NWidgetCore>(WID_CC_CONFIRM)->colour = Colours::Yellow;
+#endif
+		ConstructionDiag("window constructed: class={} number={} pos=({},{}) size={}x{} z={} nested={}x{} gui_scale={} gui_zoom={}",
 				static_cast<int>(this->window_class), static_cast<int32_t>(this->window_number), this->left, this->top, this->width, this->height,
-				this->z_position != _z_windows.end() && *this->z_position == this, this->nested_root->smallest_x, this->nested_root->smallest_y);
+				this->z_position != _z_windows.end() && *this->z_position == this, this->nested_root->smallest_x, this->nested_root->smallest_y,
+				_gui_scale, _gui_zoom);
+		ConstructionDiag("widget geometry: label=({},{}) {}x{} cancel=({},{}) {}x{} confirm=({},{}) {}x{}",
+				this->GetWidget<NWidgetBase>(WID_CC_LABEL)->pos_x, this->GetWidget<NWidgetBase>(WID_CC_LABEL)->pos_y,
+				this->GetWidget<NWidgetBase>(WID_CC_LABEL)->current_x, this->GetWidget<NWidgetBase>(WID_CC_LABEL)->current_y,
+				this->GetWidget<NWidgetBase>(WID_CC_CANCEL)->pos_x, this->GetWidget<NWidgetBase>(WID_CC_CANCEL)->pos_y,
+				this->GetWidget<NWidgetBase>(WID_CC_CANCEL)->current_x, this->GetWidget<NWidgetBase>(WID_CC_CANCEL)->current_y,
+				this->GetWidget<NWidgetBase>(WID_CC_CONFIRM)->pos_x, this->GetWidget<NWidgetBase>(WID_CC_CONFIRM)->pos_y,
+				this->GetWidget<NWidgetBase>(WID_CC_CONFIRM)->current_x, this->GetWidget<NWidgetBase>(WID_CC_CONFIRM)->current_y);
 		this->InvalidateData(0);
 	}
 
@@ -53,10 +66,29 @@ struct ConstructionConfirmationWindow : Window {
 		const Window *statusbar = FindWindowById(WindowClass::Statusbar, 0);
 		const int statusbar_top = statusbar != nullptr ? statusbar->top : -1;
 		const Point pt = GetConstructionConfirmationBarPosition(_screen.width, _screen.height, statusbar_top, sm_width, sm_height);
-		ConstructionDiag("initial position: screen={}x{} statusbar_top={} sm={}x{} -> ({},{})",
-				_screen.width, _screen.height, statusbar_top, sm_width, sm_height, pt.x, pt.y);
+		ConstructionDiag("initial position: screen={}x{} statusbar=({},{}) {}x{} toolbar=({},{}) {}x{} sm={}x{} -> ({},{})",
+				_screen.width, _screen.height,
+				statusbar != nullptr ? statusbar->left : -1, statusbar != nullptr ? statusbar->top : -1,
+				statusbar != nullptr ? statusbar->width : 0, statusbar != nullptr ? statusbar->height : 0,
+				FindWindowById(WindowClass::MainToolbar, 0) != nullptr ? FindWindowById(WindowClass::MainToolbar, 0)->left : -1,
+				FindWindowById(WindowClass::MainToolbar, 0) != nullptr ? FindWindowById(WindowClass::MainToolbar, 0)->top : -1,
+				FindWindowById(WindowClass::MainToolbar, 0) != nullptr ? FindWindowById(WindowClass::MainToolbar, 0)->width : 0,
+				FindWindowById(WindowClass::MainToolbar, 0) != nullptr ? FindWindowById(WindowClass::MainToolbar, 0)->height : 0,
+				sm_width, sm_height, pt.x, pt.y);
 		return pt;
 	}
+
+#ifdef TOUCH_DIAGNOSTIC
+	void OnPaint() override
+	{
+		const DrawPixelInfo *dpi = _cur_dpi;
+		ConstructionDiag("OnPaint: window=({},{}) {}x{} dpi=({},{}) {}x{}",
+				this->left, this->top, this->width, this->height,
+				dpi != nullptr ? dpi->left : -1, dpi != nullptr ? dpi->top : -1,
+				dpi != nullptr ? dpi->width : 0, dpi != nullptr ? dpi->height : 0);
+		this->Window::OnPaint();
+	}
+#endif
 
 	StringID GetConfirmButtonString() const
 	{
@@ -141,6 +173,14 @@ static ConstructionConfirmationPresentationQueue _confirmation_presentation;
 static void LogConstructionConfirmationBarState(const char *step)
 {
 	Window *window = FindWindowById(WindowClass::ConstructionConfirmation, 0);
+	const Window *statusbar = FindWindowById(WindowClass::Statusbar, 0);
+	const Window *toolbar = FindWindowById(WindowClass::MainToolbar, 0);
+	ConstructionDiag("{}: screen={}x{} statusbar=({},{}) {}x{} toolbar=({},{}) {}x{}",
+			step, _screen.width, _screen.height,
+			statusbar != nullptr ? statusbar->left : -1, statusbar != nullptr ? statusbar->top : -1,
+			statusbar != nullptr ? statusbar->width : 0, statusbar != nullptr ? statusbar->height : 0,
+			toolbar != nullptr ? toolbar->left : -1, toolbar != nullptr ? toolbar->top : -1,
+			toolbar != nullptr ? toolbar->width : 0, toolbar != nullptr ? toolbar->height : 0);
 	if (window == nullptr) {
 		ConstructionDiag("{}: window absent", step);
 		return;
@@ -149,6 +189,17 @@ static void LogConstructionConfirmationBarState(const char *step)
 	const bool z_visible = window->z_position != _z_windows.end() && *window->z_position == window;
 	ConstructionDiag("{}: pos=({},{}) size={}x{} z_visible={} collapsed={} shaded={}",
 			step, window->left, window->top, window->width, window->height, z_visible, window->IsCollapsed(), window->IsShaded());
+
+	std::string above;
+	int count = 0;
+	for (Window *other : Window::IterateFromFront()) {
+		if (other == window) break;
+		if (count++ >= 8) break;
+		if (!above.empty()) above += ", ";
+		above += fmt::format("{}/{}@({},{}) {}x{}", static_cast<int>(other->window_class), static_cast<int32_t>(other->window_number),
+				other->left, other->top, other->width, other->height);
+	}
+	ConstructionDiag("{}: windows in front={}", step, above.empty() ? "none" : above);
 }
 
 /** Create or update the confirmation bar now. */
@@ -157,7 +208,16 @@ static void ShowConstructionConfirmationBar()
 	ConstructionDiag("show bar: creating/updating");
 	Window *window = FindWindowById(WindowClass::ConstructionConfirmation, 0);
 	if (window == nullptr) {
+#ifdef TOUCH_DIAGNOSTIC
+		try {
+			window = new ConstructionConfirmationWindow(_construction_confirmation_desc);
+		} catch (const std::exception &e) {
+			ConstructionDiag("show bar: window creation exception: {}", e.what());
+			return;
+		}
+#else
 		window = new ConstructionConfirmationWindow(_construction_confirmation_desc);
+#endif
 		ConstructionDiag("show bar: window created ptr={}", fmt::ptr(window));
 	}
 
