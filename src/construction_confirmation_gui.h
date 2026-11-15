@@ -12,6 +12,10 @@
 
 #include "gfx_type.h"
 
+#ifdef TOUCH_DIAGNOSTIC
+extern bool _construction_confirmation_center_marker; ///< Draw a diagnostic marker in the main window.
+#endif
+
 /**
  * Compute the bottom-centre position of the confirmation bar.
  * @param screen_width Screen width.

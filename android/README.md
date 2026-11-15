@@ -71,6 +71,10 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
   les régions sales, les dimensions de la surface SDL et de la fenêtre, ainsi
   que le résultat de `SDL_UpdateWindowSurfaceRects`. Cela permet de distinguer
   pixels non écrits, non transférés et non composités.
+- V2.5D-B6 échantillonne la surface SDL avant et après le transfert, et affiche
+  un témoin rouge/jaune au centre de la fenêtre principale pendant la
+  démonstration. Si le témoin central est visible mais pas la barre basse, le
+  problème est limité à la zone basse ou à un overlay Android.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà

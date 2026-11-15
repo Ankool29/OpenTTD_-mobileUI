@@ -37,9 +37,13 @@ extern "C" void AndroidStartupMarkComplete();
 void VideoDriver_SDL_Base::MakeDirty(int left, int top, int width, int height)
 {
 	Rect r = {left, top, left + width, top + height};
-	if (FindWindowById(WindowClass::ConstructionConfirmation, 0) != nullptr) {
+#ifdef TOUCH_DIAGNOSTIC
+	static uint32_t confirm_dirty_count = 0;
+	if (FindWindowById(WindowClass::ConstructionConfirmation, 0) != nullptr && confirm_dirty_count < 40) {
+		++confirm_dirty_count;
 		ConstructionDiag("SDL MakeDirty rect=({},{}) {}x{} screen={}x{}", left, top, width, height, _screen.width, _screen.height);
 	}
+#endif
 	this->dirty_rect = BoundingRect(this->dirty_rect, r);
 }
 

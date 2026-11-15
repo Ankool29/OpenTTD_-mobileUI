@@ -28,6 +28,10 @@
 
 #include "safeguards.h"
 
+#ifdef TOUCH_DIAGNOSTIC
+bool _construction_confirmation_center_marker = false;
+#endif
+
 Point GetConstructionConfirmationBarPosition(int screen_width, int screen_height, int statusbar_top, int width, int height)
 {
 	const int bottom = statusbar_top >= 0 ? statusbar_top : screen_height;
@@ -238,6 +242,11 @@ static void LogConstructionConfirmationBarState(const char *step)
 /** Create or update the confirmation bar now. */
 static void ShowConstructionConfirmationBar()
 {
+#ifdef TOUCH_DIAGNOSTIC
+	_construction_confirmation_center_marker = true;
+	MarkWholeScreenDirty();
+	ConstructionDiag("center marker enabled");
+#endif
 	ConstructionDiag("show bar: creating/updating");
 	Window *window = FindWindowById(WindowClass::ConstructionConfirmation, 0);
 	if (window == nullptr) {
@@ -279,6 +288,11 @@ public:
 	{
 		ConstructionDiag("presenter hide: deferred={}", _confirmation_presentation.IsPending());
 		_confirmation_presentation.Cancel();
+#ifdef TOUCH_DIAGNOSTIC
+		_construction_confirmation_center_marker = false;
+		MarkWholeScreenDirty();
+		ConstructionDiag("center marker disabled");
+#endif
 		CloseWindowById(WindowClass::ConstructionConfirmation, 0);
 		LogConstructionConfirmationBarState("presenter hide after close");
 	}

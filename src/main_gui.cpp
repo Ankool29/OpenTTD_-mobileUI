@@ -22,6 +22,8 @@
 #include "zoom_func.h"
 #include "toolbar_gui.h"
 #include "statusbar_gui.h"
+#include "construction_confirmation_gui.h"
+#include "palette_func.h"
 #include "linkgraph/linkgraph_gui.h"
 #include "tilehighlight_func.h"
 #include "hotkeys.h"
@@ -251,6 +253,15 @@ struct MainWindow : Window
 	void OnPaint() override
 	{
 		this->DrawWidgets();
+#ifdef TOUCH_DIAGNOSTIC
+		if (_construction_confirmation_center_marker) {
+			const int size = ScaleGUITrad(120);
+			const int left = (this->width - size) / 2;
+			const int top = (this->height - size) / 2;
+			GfxFillRect(left, top, left + size - 1, top + size - 1, PC_YELLOW);
+			GfxFillRect(left + ScaleGUITrad(8), top + ScaleGUITrad(8), left + size - 1 - ScaleGUITrad(8), top + size - 1 - ScaleGUITrad(8), PC_RED);
+		}
+#endif
 		if (_game_mode == GameMode::Menu) {
 			static const std::initializer_list<SpriteID> title_sprites = {SPR_OTTD_O, SPR_OTTD_P, SPR_OTTD_E, SPR_OTTD_N, SPR_OTTD_T, SPR_OTTD_T, SPR_OTTD_D};
 			uint letter_spacing = ScaleGUITrad(10);

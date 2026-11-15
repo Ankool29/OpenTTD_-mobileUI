@@ -33,6 +33,39 @@
 
 #include "../safeguards.h"
 
+#ifdef TOUCH_DIAGNOSTIC
+/** Read one SDL surface pixel and return packed RGBA. */
+static uint32_t SampleSDLSurfacePixel(SDL_Surface *surface, int x, int y, bool &valid)
+{
+	valid = false;
+	if (surface == nullptr || x < 0 || y < 0 || x >= surface->w || y >= surface->h) return 0;
+	if (SDL_LockSurface(surface) != 0) return 0;
+
+	uint32_t raw = 0;
+	switch (surface->format->BytesPerPixel) {
+		case 1: raw = *reinterpret_cast<uint8_t *>(static_cast<uint8_t *>(surface->pixels) + y * surface->pitch + x); break;
+		case 2: raw = *reinterpret_cast<uint16_t *>(static_cast<uint8_t *>(surface->pixels) + y * surface->pitch + x * 2); break;
+		case 3: {
+			const uint8_t *p = static_cast<uint8_t *>(surface->pixels) + y * surface->pitch + x * 3;
+			raw = p[0] | (p[1] << 8) | (p[2] << 16);
+			break;
+		}
+		case 4: raw = *reinterpret_cast<uint32_t *>(static_cast<uint8_t *>(surface->pixels) + y * surface->pitch + x * 4); break;
+		default: SDL_UnlockSurface(surface); return 0;
+	}
+	SDL_UnlockSurface(surface);
+
+	uint8_t r, g, b, a;
+	SDL_GetRGBA(raw, surface->format, &r, &g, &b, &a);
+	valid = true;
+	return (static_cast<uint32_t>(r) << 24) | (static_cast<uint32_t>(g) << 16) | (static_cast<uint32_t>(b) << 8) | a;
+}
+#endif
+
+#ifdef TOUCH_DIAGNOSTIC
+static uint32_t _sdl_confirm_paint_count = 0;
+#endif
+
 static FVideoDriver_SDL_Default iFVideoDriver_SDL_Default; ///< The default, non-GL, SDL video driver.
 
 static SDL_Surface *_sdl_surface; ///< The surface to draw on/to.
@@ -101,7 +134,13 @@ void VideoDriver_SDL_Default::Paint()
 	PerformanceMeasurer framerate(PerformanceElement::Video);
 
 	const bool confirm_diag = FindWindowById(WindowClass::ConstructionConfirmation, 0) != nullptr;
-	if (confirm_diag) {
+#ifdef TOUCH_DIAGNOSTIC
+	const bool log_confirm = confirm_diag && (_sdl_confirm_paint_count < 12 || _sdl_confirm_paint_count % 60 == 0);
+	if (confirm_diag) ++_sdl_confirm_paint_count;
+#else
+	const bool log_confirm = false;
+#endif
+	if (log_confirm) {
 		int window_w = 0, window_h = 0;
 		SDL_GetWindowSize(this->sdl_window, &window_w, &window_h);
 		ConstructionDiag("SDL Paint: dirty=({},{}) {}x{} screen={}x{} window={}x{} surface={}x{} real={}x{} different_surface={} empty={}",
@@ -110,6 +149,22 @@ void VideoDriver_SDL_Default::Paint()
 				_sdl_surface != nullptr ? _sdl_surface->w : -1, _sdl_surface != nullptr ? _sdl_surface->h : -1,
 				_sdl_real_surface != nullptr ? _sdl_real_surface->w : -1, _sdl_real_surface != nullptr ? _sdl_real_surface->h : -1,
 				_sdl_surface != _sdl_real_surface, IsEmptyRect(this->dirty_rect));
+
+		Window *bar = FindWindowById(WindowClass::ConstructionConfirmation, 0);
+		Window *statusbar = FindWindowById(WindowClass::Statusbar, 0);
+		if (bar != nullptr) {
+			bool s1, s2, s3;
+			const int bx = bar->left + 10;
+			const int by = bar->top + 10;
+			const int cx = bar->left + bar->width / 2;
+			const int cy = bar->top + bar->height / 2;
+			const uint32_t surface1 = SampleSDLSurfacePixel(_sdl_surface, bx, by, s1);
+			const uint32_t surface2 = SampleSDLSurfacePixel(_sdl_surface, cx, cy, s2);
+			const uint32_t real1 = SampleSDLSurfacePixel(_sdl_real_surface, bx, by, s3);
+			ConstructionDiag("SDL surface before update: bar=({},{}) {}x{} surface={:08X}/{}/{:08X}/{}/real={:08X}/{} statusbar_top={}",
+					bar->left, bar->top, bar->width, bar->height, surface1, s1, surface2, s2, real1, s3,
+					statusbar != nullptr ? statusbar->top : -1);
+		}
 	}
 
 	if (IsEmptyRect(this->dirty_rect) && this->local_palette.count_dirty == 0) return;
@@ -142,8 +197,21 @@ void VideoDriver_SDL_Default::Paint()
 		SDL_BlitSurface(_sdl_surface, &r, _sdl_real_surface, &r);
 	}
 	const int update_result = SDL_UpdateWindowSurfaceRects(this->sdl_window, &r, 1);
-	if (confirm_diag) {
+	if (log_confirm) {
 		ConstructionDiag("SDL update rect=({},{}) {}x{} result={} error='{}'", r.x, r.y, r.w, r.h, update_result, SDL_GetError());
+		Window *bar = FindWindowById(WindowClass::ConstructionConfirmation, 0);
+		if (bar != nullptr) {
+			bool s1, s2, s3;
+			const int bx = bar->left + 10;
+			const int by = bar->top + 10;
+			const int cx = bar->left + bar->width / 2;
+			const int cy = bar->top + bar->height / 2;
+			const uint32_t source1 = SampleSDLSurfacePixel(_sdl_surface, bx, by, s1);
+			const uint32_t source2 = SampleSDLSurfacePixel(_sdl_surface, cx, cy, s2);
+			const uint32_t real1 = SampleSDLSurfacePixel(_sdl_real_surface, bx, by, s3);
+			ConstructionDiag("SDL surface after update: source={:08X}/{}/{:08X}/{}/real={:08X}/{}",
+					source1, s1, source2, s2, real1, s3);
+		}
 	}
 
 	this->dirty_rect = {};
