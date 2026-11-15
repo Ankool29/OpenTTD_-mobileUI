@@ -20,6 +20,7 @@
 #include "../framerate_type.h"
 #include "../window_func.h"
 #include "../construction_confirmation.h"
+#include "../construction_confirmation_diagnostic.h"
 #include "sdl2_v.h"
 #include "touch_gesture.h"
 #include <SDL.h>
@@ -36,6 +37,9 @@ extern "C" void AndroidStartupMarkComplete();
 void VideoDriver_SDL_Base::MakeDirty(int left, int top, int width, int height)
 {
 	Rect r = {left, top, left + width, top + height};
+	if (FindWindowById(WindowClass::ConstructionConfirmation, 0) != nullptr) {
+		ConstructionDiag("SDL MakeDirty rect=({},{}) {}x{} screen={}x{}", left, top, width, height, _screen.width, _screen.height);
+	}
 	this->dirty_rect = BoundingRect(this->dirty_rect, r);
 }
 

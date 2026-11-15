@@ -11,6 +11,7 @@
 #include "construction_confirmation.h"
 #include "construction_confirmation_diagnostic.h"
 #include "construction_confirmation_gui.h"
+#include "blitter/factory.hpp"
 #include "gfx_func.h"
 #include "strings_func.h"
 #include "window_func.h"
@@ -33,10 +34,23 @@ Point GetConstructionConfirmationBarPosition(int screen_width, int screen_height
 	return {std::max(0, (screen_width - width) / 2), std::max(0, bottom - height)};
 }
 
+#ifdef TOUCH_DIAGNOSTIC
+/** Read one framebuffer pixel at absolute screen coordinates. */
+static uint32_t SampleConfirmScreenPixel(int x, int y)
+{
+	if (_screen.dst_ptr == nullptr || x < 0 || y < 0 || x >= _screen.width || y >= _screen.height) return 0xDEADBEEF;
+	Blitter *blitter = BlitterFactory::GetCurrentBlitter();
+	uint32_t pixel = 0;
+	blitter->CopyImageToBuffer(blitter->MoveTo(_screen.dst_ptr, x, y), &pixel, 1, 1, 1);
+	return pixel;
+}
+#endif
+
 /** Window showing a pending construction proposal. */
 struct ConstructionConfirmationWindow : Window {
 #ifdef TOUCH_DIAGNOSTIC
 	mutable bool diagnostic_paint_logged = false;
+	mutable int diagnostic_paint_count = 0;
 #endif
 
 	ConstructionConfirmationWindow(WindowDesc &desc) : Window(desc)
@@ -82,11 +96,30 @@ struct ConstructionConfirmationWindow : Window {
 	void OnPaint() override
 	{
 		const DrawPixelInfo *dpi = _cur_dpi;
-		ConstructionDiag("OnPaint: window=({},{}) {}x{} dpi=({},{}) {}x{}",
-				this->left, this->top, this->width, this->height,
+		const int sample_x1 = this->left + 10;
+		const int sample_y1 = this->top + 10;
+		const int sample_x2 = this->left + this->width / 2;
+		const int sample_y2 = this->top + this->height / 2;
+		const int sample_x3 = this->left + this->width - 30;
+		const int sample_y3 = this->top + this->height / 2;
+		const uint32_t before1 = SampleConfirmScreenPixel(sample_x1, sample_y1);
+		const uint32_t before2 = SampleConfirmScreenPixel(sample_x2, sample_y2);
+		const uint32_t before3 = SampleConfirmScreenPixel(sample_x3, sample_y3);
+		ConstructionDiag("OnPaint[{}]: window=({},{}) {}x{} dpi=({},{}) {}x{} samples_before={:08X},{:08X},{:08X}",
+				this->diagnostic_paint_count, this->left, this->top, this->width, this->height,
 				dpi != nullptr ? dpi->left : -1, dpi != nullptr ? dpi->top : -1,
-				dpi != nullptr ? dpi->width : 0, dpi != nullptr ? dpi->height : 0);
+				dpi != nullptr ? dpi->width : 0, dpi != nullptr ? dpi->height : 0,
+				before1, before2, before3);
 		this->Window::OnPaint();
+		const uint32_t after1 = SampleConfirmScreenPixel(sample_x1, sample_y1);
+		const uint32_t after2 = SampleConfirmScreenPixel(sample_x2, sample_y2);
+		const uint32_t after3 = SampleConfirmScreenPixel(sample_x3, sample_y3);
+		if (this->diagnostic_paint_count < 8) {
+			ConstructionDiag("OnPaint[{}] samples_after={:08X},{:08X},{:08X} changed={},{},{}",
+					this->diagnostic_paint_count, after1, after2, after3,
+					before1 != after1, before2 != after2, before3 != after3);
+		}
+		++this->diagnostic_paint_count;
 	}
 #endif
 

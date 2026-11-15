@@ -67,6 +67,10 @@ Ce dossier contient l'empaquetage Android expérimental d'OpenTTD.
   géométrie des widgets, rectangle de clipping `OnPaint`, fenêtres situées
   devant la barre, couleurs très contrastées et première repeinture. Ces
   éléments ne sont actifs que dans l'APK diagnostique.
+- V2.5D-B5 échantillonne le framebuffer avant/après `OnPaint`, puis journalise
+  les régions sales, les dimensions de la surface SDL et de la fenêtre, ainsi
+  que le résultat de `SDL_UpdateWindowSurfaceRects`. Cela permet de distinguer
+  pixels non écrits, non transférés et non composités.
 - Android utilise une échelle d'interface stable de 150 % par défaut, afin
   que la rotation portrait/paysage ne change pas la taille de l'interface.
 - Le paysage et le portrait sont gérés par le redimensionnement SDL déjà

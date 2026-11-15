@@ -20,6 +20,8 @@
 #include "../fileio_func.h"
 #include "../framerate_type.h"
 #include "../window_func.h"
+#include "../construction_confirmation.h"
+#include "../construction_confirmation_diagnostic.h"
 #include "sdl2_default_v.h"
 #include <SDL.h>
 #include <mutex>
@@ -98,6 +100,18 @@ void VideoDriver_SDL_Default::Paint()
 {
 	PerformanceMeasurer framerate(PerformanceElement::Video);
 
+	const bool confirm_diag = FindWindowById(WindowClass::ConstructionConfirmation, 0) != nullptr;
+	if (confirm_diag) {
+		int window_w = 0, window_h = 0;
+		SDL_GetWindowSize(this->sdl_window, &window_w, &window_h);
+		ConstructionDiag("SDL Paint: dirty=({},{}) {}x{} screen={}x{} window={}x{} surface={}x{} real={}x{} different_surface={} empty={}",
+				this->dirty_rect.left, this->dirty_rect.top, this->dirty_rect.right - this->dirty_rect.left, this->dirty_rect.bottom - this->dirty_rect.top,
+				_screen.width, _screen.height, window_w, window_h,
+				_sdl_surface != nullptr ? _sdl_surface->w : -1, _sdl_surface != nullptr ? _sdl_surface->h : -1,
+				_sdl_real_surface != nullptr ? _sdl_real_surface->w : -1, _sdl_real_surface != nullptr ? _sdl_real_surface->h : -1,
+				_sdl_surface != _sdl_real_surface, IsEmptyRect(this->dirty_rect));
+	}
+
 	if (IsEmptyRect(this->dirty_rect) && this->local_palette.count_dirty == 0) return;
 
 	if (this->local_palette.count_dirty != 0) {
@@ -127,7 +141,10 @@ void VideoDriver_SDL_Default::Paint()
 	if (_sdl_surface != _sdl_real_surface) {
 		SDL_BlitSurface(_sdl_surface, &r, _sdl_real_surface, &r);
 	}
-	SDL_UpdateWindowSurfaceRects(this->sdl_window, &r, 1);
+	const int update_result = SDL_UpdateWindowSurfaceRects(this->sdl_window, &r, 1);
+	if (confirm_diag) {
+		ConstructionDiag("SDL update rect=({},{}) {}x{} result={} error='{}'", r.x, r.y, r.w, r.h, update_result, SDL_GetError());
+	}
 
 	this->dirty_rect = {};
 }
